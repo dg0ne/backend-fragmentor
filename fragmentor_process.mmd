@@ -1,0 +1,53 @@
+flowchart TB
+    subgraph "1. 코드 파싱"
+    A[lifesub-web\nReact 프로젝트] --> B[파일별 AST 분석]
+    B --> C[컴포넌트/훅/함수\n식별]
+    C --> D[메타데이터 수집]
+    end
+    
+    subgraph "2. 코드 파편화"
+    D --> E[컴포넌트 파편화]
+    D --> F[API 호출 파편화]
+    D --> G[JSX 요소 파편화]
+    D --> H[상태 관리 로직 파편화]
+    D --> I[라우팅 코드 파편화]
+    end
+    
+    subgraph "3. 임베딩 생성"
+    E & F & G & H & I --> J[메타데이터 컨텍스트\n추가]
+    J --> K[SentenceTransformer\n임베딩 생성]
+    K --> L[임베딩 캐싱]
+    end
+    
+    subgraph "4. 벡터 저장"
+    L --> M[Faiss 인덱싱]
+    M --> N[메타데이터 매핑]
+    N --> O[벡터 저장소]
+    end
+    
+    subgraph "5. 검색 인터페이스"
+    O --> P[쿼리 벡터화]
+    P --> Q[유사도 검색]
+    Q --> R[결과 필터링]
+    R --> S[코드 탐색 UI]
+    end
+    
+    style A fill:#ff9999
+    style B fill:#ffcc99
+    style C fill:#ffcc99
+    style D fill:#ffcc99
+    style E fill:#99ff99
+    style F fill:#99ff99
+    style G fill:#99ff99
+    style H fill:#99ff99
+    style I fill:#99ff99
+    style J fill:#99ccff
+    style K fill:#99ccff
+    style L fill:#99ccff
+    style M fill:#cc99ff
+    style N fill:#cc99ff
+    style O fill:#cc99ff
+    style P fill:#ff99cc
+    style Q fill:#ff99cc
+    style R fill:#ff99cc
+    style S fill:#ff99cc

@@ -1,5 +1,5 @@
 """
-Faiss 벡터 저장소 모듈
+향상된 Faiss 벡터 저장소 모듈 - lifesub-web 프로젝트용
 """
 
 import os
@@ -7,18 +7,18 @@ import json
 import pickle
 import numpy as np
 import faiss
-from typing import List, Dict, Any, Optional, Tuple
+from typing import List, Dict, Any, Optional, Tuple, Set
 
-class FaissVectorStore:
+class LifesubVectorStore:
     """
-    Faiss를 사용한 코드 임베딩 벡터 저장소
+    Faiss를 사용한 lifesub-web 코드 임베딩 벡터 저장소
     """
     
     def __init__(self, 
                  dimension: int, 
-                 index_type: str = 'L2',
+                 index_type: str = 'Cosine',
                  data_dir: str = './data',
-                 index_name: str = 'code_fragments'):
+                 index_name: str = 'lifesub_web_fragments'):
         """
         Args:
             dimension: 벡터 차원 수
@@ -41,6 +41,7 @@ class FaissVectorStore:
         # 인덱스 파일 경로
         self.index_path = os.path.join(self.index_dir, f"{index_name}.index")
         self.id_map_path = os.path.join(self.meta_dir, f"{index_name}_id_map.pkl")
+        self.metadata_path = os.path.join(self.meta_dir, f"{index_name}_metadata.json")
         
         # 내부 상태
         self.index = None
@@ -84,7 +85,19 @@ class FaissVectorStore:
                 data = pickle.load(f)
                 self.id_to_idx = data.get('id_to_idx', {})
                 self.idx_to_id = data.get('idx_to_id', {})
-                self.fragment_metadata = data.get('fragment_metadata', {})
+            
+            # 메타데이터는 별도 JSON 파일에서 로드
+            if os.path.exists(self.metadata_path):
+                with open(self.metadata_path, 'r', encoding='utf-8') as f:
+                    self.fragment_metadata = json.load(f)
+            else:
+                # 이전 버전 호환성을 위한 처리
+                with open(self.id_map_path, 'rb') as f:
+                    data = pickle.load(f)
+                    self.fragment_metadata = data.get('fragment_metadata', {})
+                
+                # 메타데이터 분리 저장
+                self._save_metadata()
                 
             print(f"Faiss 인덱스 로드 완료 (벡터 수: {self.index.ntotal})")
             
@@ -98,18 +111,28 @@ class FaissVectorStore:
             # Faiss 인덱스 저장
             faiss.write_index(self.index, self.index_path)
             
-            # ID 매핑 및 메타데이터 저장
+            # ID 매핑 저장
             with open(self.id_map_path, 'wb') as f:
                 pickle.dump({
                     'id_to_idx': self.id_to_idx,
-                    'idx_to_id': self.idx_to_id,
-                    'fragment_metadata': self.fragment_metadata
+                    'idx_to_id': self.idx_to_id
                 }, f)
+            
+            # 메타데이터 별도 저장
+            self._save_metadata()
                 
             print(f"Faiss 인덱스 저장 완료 (벡터 수: {self.index.ntotal})")
             
         except Exception as e:
             print(f"인덱스 저장 실패: {str(e)}")
+    
+    def _save_metadata(self):
+        """메타데이터만 별도 저장 (JSON 형식)"""
+        try:
+            with open(self.metadata_path, 'w', encoding='utf-8') as f:
+                json.dump(self.fragment_metadata, f, ensure_ascii=False, indent=2)
+        except Exception as e:
+            print(f"메타데이터 저장 실패: {str(e)}")
     
     def add_fragments(self, fragments: List[Dict[str, Any]], embeddings: Dict[str, np.ndarray]):
         """
@@ -146,13 +169,7 @@ class FaissVectorStore:
             fragment_ids.append(fragment_id)
             
             # 메타데이터 저장
-            self.fragment_metadata[fragment_id] = {
-                'type': fragment['type'],
-                'name': fragment['name'],
-                'file_path': fragment['metadata'].get('file_path', ''),
-                'file_name': fragment['metadata'].get('file_name', ''),
-                'content_preview': fragment['content'][:100] + '...' if len(fragment['content']) > 100 else fragment['content']
-            }
+            self.fragment_metadata[fragment_id] = self._extract_metadata(fragment)
         
         if not vectors:
             print("추가할 새 벡터가 없습니다.")
@@ -175,13 +192,49 @@ class FaissVectorStore:
         # 인덱스 저장
         self._save_index()
     
-    def search(self, query_vector: np.ndarray, k: int = 10) -> List[Dict[str, Any]]:
+    def _extract_metadata(self, fragment: Dict[str, Any]) -> Dict[str, Any]:
         """
-        쿼리 벡터와 유사한 코드 파편 검색
+        검색에 필요한 메타데이터 추출 (저장 크기 최적화)
+        
+        Args:
+            fragment: 코드 파편
+            
+        Returns:
+            Dict[str, Any]: 추출된 메타데이터
+        """
+        metadata = {
+            'type': fragment['type'],
+            'name': fragment['name'],
+            'file_path': fragment['metadata'].get('file_path', ''),
+            'file_name': fragment['metadata'].get('file_name', ''),
+            'content_preview': fragment['content'][:150] + '...' if len(fragment['content']) > 150 else fragment['content']
+        }
+        
+        # 타입별 추가 메타데이터
+        if fragment['type'] == 'component':
+            metadata.update({
+                'component_type': fragment['metadata'].get('component_type', ''),
+                'props': fragment['metadata'].get('props', [])[:5],
+                'purpose': fragment['metadata'].get('purpose', '')
+            })
+        elif fragment['type'] == 'api_call':
+            metadata.update({
+                'api_service': fragment['metadata'].get('api_service', ''),
+                'http_method': fragment['metadata'].get('http_method', '')
+            })
+        elif fragment['type'] == 'mui_component':
+            metadata['component_library'] = 'material-ui'
+            
+        return metadata
+    
+    def search(self, query_vector: np.ndarray, k: int = 10, filters: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
+        """
+        쿼리 벡터와 유사한 코드 파편 검색 (필터링 지원)
         
         Args:
             query_vector: 쿼리 벡터
             k: 반환할 결과 수
+            filters: 필터링 조건 (예: {'type': 'component'})
             
         Returns:
             List[Dict]: 검색 결과 목록
@@ -196,10 +249,15 @@ class FaissVectorStore:
         # 벡터 형식 변환
         query_vector = np.array([query_vector]).astype('float32')
         
+        # 필터링이 필요한 경우 더 많은 결과를 가져와서 후처리
+        search_k = k
+        if filters:
+            search_k = min(k * 5, self.index.ntotal)  # 필터링을 위해 더 많은 후보 검색
+            
         # 검색 실행
-        distances, indices = self.index.search(query_vector, k)
+        distances, indices = self.index.search(query_vector, search_k)
         
-        # 결과 변환
+        # 결과 변환 및 필터링
         results = []
         for i, idx in enumerate(indices[0]):
             # 유효한 인덱스가 아닌 경우 건너뛰기
@@ -209,6 +267,10 @@ class FaissVectorStore:
             fragment_id = self.idx_to_id[idx]
             metadata = self.fragment_metadata.get(fragment_id, {})
             
+            # 필터 적용
+            if filters and not self._apply_filters(metadata, filters):
+                continue
+                
             results.append({
                 'id': fragment_id,
                 'score': float(distances[0][i]),
@@ -219,7 +281,39 @@ class FaissVectorStore:
                 'content_preview': metadata.get('content_preview', '')
             })
             
+            # 충분한 결과를 얻었으면 종료
+            if len(results) >= k:
+                break
+                
         return results
+    
+    def _apply_filters(self, metadata: Dict[str, Any], filters: Dict[str, Any]) -> bool:
+        """
+        메타데이터에 필터 적용
+        
+        Args:
+            metadata: 메타데이터
+            filters: 필터 조건
+            
+        Returns:
+            bool: 필터 통과 여부
+        """
+        for key, value in filters.items():
+            if key not in metadata:
+                return False
+                
+            if isinstance(value, list):
+                # 리스트인 경우 하나라도 일치하면 통과
+                if metadata[key] not in value:
+                    return False
+            elif isinstance(metadata[key], list):
+                # 메타데이터가 리스트인 경우 (props 등)
+                if value not in metadata[key]:
+                    return False
+            elif metadata[key] != value:
+                return False
+                
+        return True
     
     def get_stats(self) -> Dict[str, Any]:
         """
@@ -230,6 +324,9 @@ class FaissVectorStore:
         """
         type_counts = {}
         file_counts = {}
+        component_types = {}
+        categories = {}
+        purposes = {}
         
         for fragment_id, metadata in self.fragment_metadata.items():
             # 타입별 카운트
@@ -246,14 +343,105 @@ class FaissVectorStore:
                     file_counts[file_path] += 1
                 else:
                     file_counts[file_path] = 1
+                    
+            # 컴포넌트 타입별 카운트
+            if frag_type == 'component':
+                comp_type = metadata.get('component_type', 'unknown')
+                if comp_type in component_types:
+                    component_types[comp_type] += 1
+                else:
+                    component_types[comp_type] = 1
+                    
+                # 목적별 카운트
+                purpose = metadata.get('purpose', 'unknown')
+                if purpose in purposes:
+                    purposes[purpose] += 1
+                else:
+                    purposes[purpose] = 1
+                    
+            # 카테고리별 카운트
+            category = self._extract_category_from_path(file_path)
+            if category:
+                if category in categories:
+                    categories[category] += 1
+                else:
+                    categories[category] = 1
         
         return {
             'vector_count': self.index.ntotal,
             'dimension': self.dimension,
             'index_type': self.index_type,
             'fragment_types': type_counts,
-            'file_counts': file_counts
+            'component_types': component_types,
+            'categories': categories,
+            'purposes': purposes,
+            'file_counts': len(file_counts)
         }
+    
+    def _extract_category_from_path(self, file_path: str) -> Optional[str]:
+        """파일 경로에서 카테고리 추출"""
+        if not file_path:
+            return None
+            
+        parts = file_path.split(os.path.sep)
+        if 'src' in parts:
+            src_idx = parts.index('src')
+            if len(parts) > src_idx + 1:
+                return parts[src_idx + 1]
+                
+        return None
+    
+    def get_fragments_by_file(self, file_path: str) -> List[Dict[str, Any]]:
+        """
+        특정 파일의 모든 파편 검색
+        
+        Args:
+            file_path: 파일 경로
+            
+        Returns:
+            List[Dict]: 파편 목록
+        """
+        results = []
+        
+        for fragment_id, metadata in self.fragment_metadata.items():
+            if metadata.get('file_path') == file_path:
+                idx = self.id_to_idx.get(fragment_id)
+                if idx is not None:
+                    results.append({
+                        'id': fragment_id,
+                        'type': metadata.get('type', ''),
+                        'name': metadata.get('name', ''),
+                        'file_path': metadata.get('file_path', ''),
+                        'file_name': metadata.get('file_name', ''),
+                        'content_preview': metadata.get('content_preview', '')
+                    })
+                    
+        return results
+    
+    def get_similar_fragments(self, fragment_id: str, k: int = 5) -> List[Dict[str, Any]]:
+        """
+        특정 파편과 유사한 다른 파편 검색
+        
+        Args:
+            fragment_id: 기준 파편 ID
+            k: 반환할 결과 수
+            
+        Returns:
+            List[Dict]: 유사한 파편 목록
+        """
+        # 파편 ID가 인덱스에 없는 경우
+        if fragment_id not in self.id_to_idx:
+            return []
+            
+        # 기준 파편의 인덱스와 벡터 가져오기
+        idx = self.id_to_idx[fragment_id]
+        vector = self.index.reconstruct(idx)
+        
+        # 자기 자신을 제외한 유사 파편 검색
+        results = self.search(vector, k=k+1)
+        
+        # 자기 자신 제거
+        return [r for r in results if r['id'] != fragment_id]
     
     def save(self):
         """인덱스 명시적 저장"""
