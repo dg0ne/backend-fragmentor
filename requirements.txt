@@ -1,5 +1,5 @@
 # 코드 파싱
-esprima-python==4.0.1  # JavaScript/JSX 파싱
+esprima==4.0.1  # JavaScript/JSX 파싱
 pyjsparser==2.7.1      # 대체 JS 파서 (필요시)
 
 # 임베딩

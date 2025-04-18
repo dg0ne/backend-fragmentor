@@ -24,7 +24,7 @@
 
 - Python 3.9 이상
 - 필요한 패키지:
-  - esprima-python
+  - esprima
   - sentence-transformers
   - faiss-cpu
   - colorama
