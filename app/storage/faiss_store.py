@@ -323,7 +323,7 @@ class FaissVectorStore:
             Dict: 통계 정보
         """
         type_counts = {}
-        file_counts = {}
+        file_counts = set()  # 중복 없이 파일 경로 저장하기 위해 set 사용
         component_types = {}
         categories = {}
         purposes = {}
@@ -339,10 +339,7 @@ class FaissVectorStore:
             # 파일별 카운트
             file_path = metadata.get('file_path', '')
             if file_path:
-                if file_path in file_counts:
-                    file_counts[file_path] += 1
-                else:
-                    file_counts[file_path] = 1
+                file_counts.add(file_path)  # set에 추가하여 중복 제거
                     
             # 컴포넌트 타입별 카운트
             if frag_type == 'component':
@@ -375,7 +372,7 @@ class FaissVectorStore:
             'component_types': component_types,
             'categories': categories,
             'purposes': purposes,
-            'file_counts': len(file_counts)
+            'file_counts': len(file_counts)  # 고유한 파일 수 반환
         }
     
     def _extract_category_from_path(self, file_path: str) -> Optional[str]:

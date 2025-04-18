@@ -1,23 +1,10 @@
-# Byte-compiled / optimized / DLL files
+# Python 캐시 파일
 __pycache__/
 *.py[cod]
 *$py.class
-
-# C extensions
 *.so
-
-# VS Code settings
-.vscode/
-
-# PyCharm settings
-.idea/
-# OR if you want to keep some shared settings:
-# .idea/*
-# !.idea/inspectionProfiles
-# !.idea/codeStyles
-
-# Distribution / packaging
 .Python
+env/
 build/
 develop-eggs/
 dist/
@@ -33,47 +20,41 @@ var/
 .installed.cfg
 *.egg
 
-# Unit test / coverage reports
-htmlcov/
-.tox/
-.nox/
-.coverage
-.coverage.*
-.cache
-nosetests.xml
-coverage.xml
-*.cover
-.hypothesis/
-.pytest_cache/
-
-# Jupyter Notebook checkpoints
-.ipynb_checkpoints
-
-# mypy
-.mypy_cache/
-.dmypy.json
-dmypy.json
-
-# Pyre
-.pyre/
-
-# profiling
-profiler_output/
-
-# logs
-*.log
-
-# environment files
-.env
-.venv
-env/
+# 가상환경
 venv/
 ENV/
-env.bak/
-venv.bak/
+env/
 
-# local test db or temp files
-*.sqlite3
-*.db
-*.tmp
-*.bak
+# IDE 설정
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# 벡터 데이터 디렉토리
+data/
+*/data/
+data/*
+
+# 임베딩 캐시
+**/embeddings/
+*.pkl
+
+# Faiss 인덱스
+*.index
+
+# 메타데이터 파일
+*.json
+!package.json
+!package-lock.json
+
+# 로그 파일
+*.log
+
+# 모델 캐시
+.cache/
+*/.cache/
+*/*/.cache/
+
+# 테스트 생성 파일
+test_output/

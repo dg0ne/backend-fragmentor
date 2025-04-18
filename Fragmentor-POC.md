@@ -1,16 +1,18 @@
-# lifesub-web 소스 코드 분석 및 파편화 POC
+# Backend-Fragmentor - lifesub-web 소스 코드 분석 및 파편화 POC
 
-이 프로젝트는 lifesub-web React 애플리케이션의 소스 코드를 의미 단위로 파편화하고, 벡터화하여 효율적인 검색이 가능하도록 만든 POC(Proof of Concept)입니다.
+이 프로젝트는 Backend-Fragmentor 서비스의 POC(Proof of Concept)로, React 기반의 lifesub-web 애플리케이션 소스 코드를 의미 단위로 파편화하고 벡터화하여 효율적인 검색이 가능하도록 구현한 것입니다.
 
 ## 개요
 
-이 POC는 다음과 같은 기능을 제공합니다:
+이 POC는 Backend-Fragmentor 서비스의 핵심 기능을 검증하기 위한 것으로, 다음 기능을 제공합니다:
 
 - **코드 파싱**: lifesub-web 프로젝트의 React 소스 코드를 파싱하여 AST(Abstract Syntax Tree) 분석
 - **의미 단위 파편화**: 컴포넌트, 함수, JSX 요소, API 호출 등을 의미 단위로 분절
 - **벡터 임베딩 생성**: 각 코드 파편에 대한 임베딩 벡터 생성
 - **벡터 저장소**: Faiss를 활용한 벡터 저장 및 효율적인 유사도 검색
 - **대화형 검색 인터페이스**: 코드 파편을 검색하고 탐색할 수 있는 CLI 도구
+
+본 POC는 최종적으로 Backend-Fragmentor 서비스로 발전하여, 레거시 프로젝트의 코드 분석 및 검색 기능을 제공할 예정입니다.
 
 ## 파편화 프로세스 다이어그램
 
@@ -24,18 +26,19 @@
 
 - Python 3.9 이상
 - 필요한 패키지:
-  - esprima
-  - sentence-transformers
-  - faiss-cpu
+  - esprima==4.0.1
+  - sentence-transformers==2.2.2
+  - faiss-cpu==1.7.4
+  - torch==2.0.1
   - colorama
-  - tqdm
+  - tqdm==4.65.0
 
 ### 설치
 
 ```bash
 # 저장소 클론
-git clone https://github.com/your-username/lifesub-web-fragmentor.git
-cd lifesub-web-fragmentor
+git clone https://github.com/your-org/backend-fragmentor.git
+cd backend-fragmentor
 
 # 의존성 설치
 pip install -r requirements.txt
@@ -47,10 +50,10 @@ pip install -r requirements.txt
 
 ```bash
 # lifesub-web 프로젝트 파편화
-python lifesub_fragmentor.py --project /path/to/lifesub-web
+python lifesubweb-fragmentor.py --project /path/to/lifesub-web
 
 # 데이터 디렉토리 지정 (기본값: ./data)
-python lifesub_fragmentor.py --project /path/to/lifesub-web --data-dir ./custom-data-dir
+python lifesubweb-fragmentor.py --project /path/to/lifesub-web --data-dir ./custom-data-dir
 ```
 
 #### 2. 코드 검색
@@ -67,10 +70,10 @@ python search_ui.py --data-dir ./custom-data-dir
 
 ```bash
 # 특정 쿼리로 직접 검색
-python lifesub_fragmentor.py --project /path/to/lifesub-web --query "구독 서비스 목록 컴포넌트"
+python lifesubweb-fragmentor.py --project /path/to/lifesub-web --query "구독 서비스 목록 컴포넌트"
 
 # 대화형 검색 모드
-python lifesub_fragmentor.py --project /path/to/lifesub-web --search
+python lifesubweb-fragmentor.py --project /path/to/lifesub-web --search
 
 # 필터링을 적용한 검색 (대화형 UI 내에서)
 코드검색> search 구독 컴포넌트 --type=component
@@ -89,20 +92,20 @@ python lifesub_fragmentor.py --project /path/to/lifesub-web --search
 
 ```bash
 # 1. 파편화 및 벡터화 실행
-$ python lifesubweb-fragmentor.py --project ../lifesub --data-dir ./data
+$ python lifesubweb-fragmentor.py --project ../lifesub-web --data-dir ./data
 
 ================================================
- lifesub-web 프로젝트 파편화 및 벡터화 시작: ./lifesub-web
+ lifesub-web 프로젝트 파편화 및 벡터화 시작: ../lifesub-web
 ================================================
 
 [1/4] 프로젝트 파싱 중...
-lifesub-web 프로젝트 파싱 중: ./lifesub-web
+lifesub-web 프로젝트 파싱 중: ../lifesub-web
 처리 중... 10개 파일 완료
 처리 중... 20개 파일 완료
 처리 중... 30개 파일 완료
   - 파싱된 파일: 31개
   - 감지된 컴포넌트: 24개
-  - 파일 확장자 분포: {'.js': 28, '.html': 1, '.json': 2}
+  - 파일 확장자 분포: {'.js': 28, '.jsx': 3}
 
 [2/4] 코드 파편화 중...
   - 생성된 파편: 112개
@@ -129,20 +132,6 @@ lifesub-web 프로젝트 파싱 중: ./lifesub-web
 
 # 2. 대화형 검색 UI 실행
 $ python search_ui.py --data-dir ./data
-
-# (이하 검색 UI 예시 생략)
-```
-
-## 실행 스크립트
-
-프로젝트에는 편리한 실행을 위한 Bash 스크립트도 포함되어 있습니다:
-
-```bash
-# 스크립트 실행 권한 부여
-chmod +x run.sh
-
-# 스크립트 실행
-./run.sh
 ```
 
 ## 파편화 프로세스 상세
@@ -186,34 +175,34 @@ chmod +x run.sh
 ## 프로젝트 구조
 
 ```
-.
-├── lifesub_fragmentor.py     # 메인 실행 스크립트
-├── search_ui.py              # 검색 UI
-├── requirements.txt          # 의존성 패키지
-├── README.md                 # 본 문서
-├── run.sh                    # 실행 스크립트
-├── fragmentor_process.mmd    # 프로세스 이미지(추후 svg로 변경예정)
-└── search_ui_example.svg     # 예시 이미지
-└── app/
-    ├── parser/               # 코드 파서
-    │   └── jsx_parser.py  # 향상된 JSX 파서
-    ├── fragmenter/           # 파편화 모듈
-    │   └── fragmenter.py  # 향상된 파편화 엔진
-    ├── embedding/            # 임베딩 모듈
-    │   └── embedder.py    # 향상된 임베딩 생성기
-    ├── storage/              # 벡터 저장소
-    │   └── faiss_store.py  # 향상된 Faiss 벡터 저장소
-│   └── main.py                   # 애플리케이션 진입점
+backend-fragmentor/
+├── lifesubweb-fragmentor.py     # POC 메인 실행 스크립트
+├── search_ui.py                 # 검색 UI
+├── requirements.txt             # 의존성 패키지
+├── README.md                    # 프로젝트 개요
+├── Fragmentor-POC.md            # POC 설명 문서
+├── fragmentor_process.mmd       # 프로세스 다이어그램
+├── search_ui_example.svg        # 예시 이미지
+└── app/                         # 핵심 모듈
+    ├── parser/                  # 코드 파서
+    │   └── jsx_parser.py        # 향상된 JSX 파서
+    ├── fragmenter/              # 파편화 모듈
+    │   └── fragmenter.py        # 파편화 엔진
+    ├── embedding/               # 임베딩 모듈
+    │   └── embedder.py          # 임베딩 생성기
+    ├── storage/                 # 벡터 저장소
+    │   └── faiss_store.py       # Faiss 벡터 저장소
+    └── main.py                  # 애플리케이션 진입점
 ```
 
 ## 확장 및 개선 방향
 
 ### 향후 개발 방향
-1. **구문 분석 강화** - 더 정확한 AST 분석과 의미 단위 추출
-2. **다중 언어 지원** - Java, Python, TypeScript 등 추가 언어 지원
-3. **웹 인터페이스** - 웹 기반 코드 검색 및 탐색 UI 개발
-4. **Fine-Tuned 임베딩** - 코드 특화 임베딩 모델 훈련
-5. **코드 생성 통합** - LLM과 연동한 코드 생성 및 수정 기능
+1. **Backend-Fragmentor 서비스화** - POC에서 실제 서비스로 전환
+2. **FastAPI 기반 API 서비스** - 검색 및 관리 API 개발
+3. **다중 언어 지원** - Java, Python, TypeScript 등 추가 언어 지원
+4. **벡터 DB 고도화** - 더 효율적인 벡터 검색 및 저장 구현
+5. **웹 인터페이스** - 웹 기반 코드 검색 및 탐색 UI 개발
 
 ### 파편화 성능 개선
 - 임베딩 생성 병렬 처리 최적화
@@ -223,16 +212,15 @@ chmod +x run.sh
 ### 검색 기능 확장
 - 자연어 코드 변환 검색
 - 유사 코드 클러스터링
-- 시각적 코드 관계 탐색
+- 코드 관계 시각화
 - 복잡한 쿼리 구문 지원
 
-## 기여 방법
+## 주의사항
 
-이 프로젝트에 기여하고 싶으시다면:
-1. 이슈 제출 또는 기능 요청
-2. Pull Request 제출
-3. 문서 개선 제안
+- 현재 이 코드는 POC 단계로, 프로덕션 환경에서의 사용은 권장하지 않습니다.
+- 데이터 디렉토리에 생성되는 인덱스 및 캐시 파일은 상당한 용량을 차지할 수 있으니 `.gitignore`에 추가하여 관리하세요.
+- SentenceTransformer와 Faiss를 사용하므로 충분한 메모리가 필요합니다.
 
 ## 라이선스
 
-이 프로젝트는 MIT 라이선스 하에 있습니다. 자세한 내용은 LICENSE 파일을 참조하세요.
+이 프로젝트는 내부 사용 목적으로 개발되었습니다.

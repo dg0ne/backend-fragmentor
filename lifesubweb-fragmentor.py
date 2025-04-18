@@ -102,8 +102,16 @@ def process_lifesub_web(project_path: str, data_dir: str = './data'):
     print(f"  - 저장된 벡터: {stats['vector_count']}개")
     print(f"  - 벡터 차원: {stats['dimension']}")
     print(f"  - 인덱스 타입: {stats['index_type']}")
-    print(f"  - 파편 타입 분포: {stats['fragment_types']}")
-    print(f"  - 처리된 파일 수: {len(stats['file_counts'])}")
+    
+    # 타입 오류 수정: file_counts가 길이를 취할 수 없는 정수일 경우 대응
+    if isinstance(stats['file_counts'], int):
+        print(f"  - 처리된 파일 수: {stats['file_counts']}")
+    else:
+        print(f"  - 처리된 파일 수: {len(stats['file_counts'])}")
+    
+    # 파편 타입 분포가 있는 경우에만 출력
+    if 'fragment_types' in stats:
+        print(f"  - 파편 타입 분포: {stats['fragment_types']}")
     
     return {
         'vector_store': vector_store,
