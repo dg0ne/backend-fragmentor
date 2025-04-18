@@ -15,10 +15,10 @@ from colorama import Fore, Style
 # 상대 경로 import를 위한 경로 추가
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from src.parser.jsx_parser import EnhancedJSXParser, parse_react_project
-from src.fragmenter.fragmenter import LifesubFragmenter
-from src.embedding.embedder import LifesubEmbedder
-from src.storage.faiss_store import LifesubVectorStore
+from app.parser.jsx_parser import EnhancedJSXParser, parse_react_project
+from app.fragmenter.fragmenter import LifesubFragmenter
+from app.embedding.embedder import LifesubEmbedder
+from app.storage.faiss_store import LifesubVectorStore
 
 # 색상 초기화
 colorama.init()

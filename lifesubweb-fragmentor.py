@@ -12,10 +12,10 @@ from typing import Dict, List, Any
 # 상대 경로 import를 위한 경로 추가
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from src.parser.jsx_parser import parse_react_project
-from src.fragmenter.fragmenter import ReactFragmenter
-from src.embedding.embedder import CodeEmbedder
-from src.storage.faiss_store import FaissVectorStore
+from app.parser.jsx_parser import parse_react_project
+from app.fragmenter.fragmenter import ReactFragmenter
+from app.embedding.embedder import CodeEmbedder
+from app.storage.faiss_store import FaissVectorStore
 
 def setup_directories(base_dir: str = './data'):
     """필요한 디렉토리 생성"""
