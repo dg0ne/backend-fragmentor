@@ -1,5 +1,5 @@
 """
-향상된 코드 파편화(Fragmentation) 모듈 - lifesub-web 프로젝트용
+향상된 코드 파편화(Fragmentation) 모듈 - React 프로젝트용
 """
 
 import re
@@ -7,8 +7,8 @@ import uuid
 import json
 from typing import List, Dict, Any, Tuple, Optional
 
-class LifesubFragmenter:
-    """lifesub-web 코드를 의미 단위로 파편화하는 클래스"""
+class ReactFragmenter:
+    """React 코드를 의미 단위로 파편화하는 클래스"""
     
     def __init__(self):
         # 파편화 단위 정의

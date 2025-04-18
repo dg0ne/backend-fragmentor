@@ -192,19 +192,18 @@ chmod +x run.sh
 ├── requirements.txt          # 의존성 패키지
 ├── README.md                 # 본 문서
 ├── run.sh                    # 실행 스크립트
-├── docs/
-│   └── images/               # 문서 이미지
-│       ├── fragmentor_process.svg
-│       └── search_ui_example.svg
-└── src/
+├── fragmentor_process.mmd    # 프로세스 이미지(추후 svg로 변경예정)
+└── search_ui_example.svg     # 예시 이미지
+└── app/
     ├── parser/               # 코드 파서
-    │   └── jsx_parser_enhanced.py  # 향상된 JSX 파서
+    │   └── jsx_parser.py  # 향상된 JSX 파서
     ├── fragmenter/           # 파편화 모듈
-    │   └── fragmenter_enhanced.py  # 향상된 파편화 엔진
+    │   └── fragmenter.py  # 향상된 파편화 엔진
     ├── embedding/            # 임베딩 모듈
-    │   └── embedder_enhanced.py    # 향상된 임베딩 생성기
-    └── storage/              # 벡터 저장소
-        └── faiss_store_enhanced.py  # 향상된 Faiss 벡터 저장소
+    │   └── embedder.py    # 향상된 임베딩 생성기
+    ├── storage/              # 벡터 저장소
+    │   └── faiss_store.py  # 향상된 Faiss 벡터 저장소
+│   └── main.py                   # 애플리케이션 진입점
 ```
 
 ## 확장 및 개선 방향

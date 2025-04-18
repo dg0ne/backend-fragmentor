@@ -9,9 +9,9 @@ import numpy as np
 import faiss
 from typing import List, Dict, Any, Optional, Tuple, Set
 
-class LifesubVectorStore:
+class FaissVectorStore:
     """
-    Faiss를 사용한 lifesub-web 코드 임베딩 벡터 저장소
+    Faiss를 사용한 코드 임베딩 벡터 저장소
     """
     
     def __init__(self, 

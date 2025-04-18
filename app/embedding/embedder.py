@@ -9,7 +9,7 @@ from typing import List, Dict, Any, Union, Optional
 from tqdm import tqdm
 from sentence_transformers import SentenceTransformer
 
-class LifesubEmbedder:
+class CodeEmbedder:
     """
     lifesub-web 코드 조각을 SentenceTransformer를 이용해 벡터로 변환
     """

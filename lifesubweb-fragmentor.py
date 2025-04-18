@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """
-lifesub-web 프로젝트 파편화 POC 스크립트
+React 프로젝트 파편화 POC 스크립트
 """
 
 import os

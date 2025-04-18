@@ -16,9 +16,9 @@ from colorama import Fore, Style
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from app.parser.jsx_parser import EnhancedJSXParser, parse_react_project
-from app.fragmenter.fragmenter import LifesubFragmenter
-from app.embedding.embedder import LifesubEmbedder
-from app.storage.faiss_store import LifesubVectorStore
+from app.fragmenter.fragmenter import ReactFragmenter
+from app.embedding.embedder import CodeEmbedder
+from app.storage.faiss_store import FaissVectorStore
 
 # 색상 초기화
 colorama.init()
@@ -29,7 +29,7 @@ class CodeSearchShell(cmd.Cmd):
     intro = f"{Fore.CYAN}lifesub-web 코드 검색 쉘에 오신 것을 환영합니다. 도움말을 보려면 'help'를 입력하세요.{Style.RESET_ALL}"
     prompt = f"{Fore.GREEN}코드검색> {Style.RESET_ALL}"
     
-    def __init__(self, vector_store: LifesubVectorStore, embedder: LifesubEmbedder):
+    def __init__(self, vector_store: FaissVectorStore, embedder: CodeEmbedder):
         super().__init__()
         self.vector_store = vector_store
         self.embedder = embedder
@@ -237,10 +237,10 @@ def run_search_ui(data_dir: str = './data'):
     """
     try:
         # 임베더 초기화
-        embedder = LifesubEmbedder(model_name='all-MiniLM-L6-v2')
+        embedder = CodeEmbedder(model_name='all-MiniLM-L6-v2')
         
         # 인덱스 로드
-        vector_store = LifesubVectorStore(
+        vector_store = FaissVectorStore(
             dimension=embedder.vector_dim,
             index_type='Cosine',
             data_dir=data_dir,
