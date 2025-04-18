@@ -89,7 +89,7 @@ python lifesub_fragmentor.py --project /path/to/lifesub-web --search
 
 ```bash
 # 1. 파편화 및 벡터화 실행
-$ python src/lifesubweb-fragmentor.py --project ../lifesub --data-dir ./data
+$ python lifesubweb-fragmentor.py --project ../lifesub --data-dir ./data
 
 ================================================
  lifesub-web 프로젝트 파편화 및 벡터화 시작: ./lifesub-web
