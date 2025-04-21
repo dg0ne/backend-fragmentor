@@ -103,10 +103,10 @@ python search_ui.py --data-dir ./custom-data-dir
 
 ```bash
 # 특정 쿼리로 직접 검색
-python lifesubweb-fragmentor.py --project /path/to/lifesub-web --query "구독 서비스 목록 컴포넌트"
+python lifesubweb-fragmentor.py --project ../lifesub-web --query "구독 서비스 목록 컴포넌트"
 
 # 대화형 검색 모드
-python lifesubweb-fragmentor.py --project /path/to/lifesub-web --search
+python lifesubweb-fragmentor.py --project ../lifesub-web --search
 
 # 필터링을 적용한 검색 (대화형 UI 내에서)
 코드검색> search 구독 컴포넌트 --type=component
@@ -151,7 +151,7 @@ lifesub-web 프로젝트 파싱 중: ../lifesub-web
   - 컴포넌트 타입 분포: {'functional': 22, 'arrow_function': 2}
 
 [3/4] 임베딩 생성 중...
-  - 모델: all-MiniLM-L6-v2
+  - 모델: microsoft/codebert-base
   - 벡터 차원: 384
 100%|██████████| 4/4 [00:02<00:00,  1.47it/s]
   - 생성된 임베딩: 112개

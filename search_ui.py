@@ -237,7 +237,7 @@ def run_search_ui(data_dir: str = './data'):
     """
     try:
         # 임베더 초기화
-        embedder = CodeEmbedder(model_name='all-MiniLM-L6-v2')
+        embedder = CodeEmbedder(model_name='microsoft/codebert-base')
         
         # 인덱스 로드
         vector_store = FaissVectorStore(

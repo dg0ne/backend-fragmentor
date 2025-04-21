@@ -14,7 +14,7 @@ class CodeEmbedder:
     lifesub-web 코드 조각을 SentenceTransformer를 이용해 벡터로 변환
     """
     
-    def __init__(self, model_name: str = 'all-MiniLM-L6-v2', cache_dir: Optional[str] = None):
+    def __init__(self, model_name: str = 'microsoft/codebert-base', cache_dir: Optional[str] = None):
         """
         Args:
             model_name: SentenceTransformer 모델 이름
@@ -154,18 +154,176 @@ class CodeEmbedder:
         name = fragment['name']
         metadata = fragment['metadata']
         
-        # 문맥 정보 구성
+        # 코드 구조 및 목적 설명 생성
+        code_description = f"이것은 {frag_type} 타입이며 이름은 {name}입니다. "
+        
+        # 파일 경로 분석하여 추가 컨텍스트 추출
+        file_path = metadata.get('file_path', '')
+        file_name = metadata.get('file_name', '')
+        
+        # 파일 경로에서 모듈/카테고리 추출
+        module_info = ""
+        if 'src/components/' in file_path:
+            module_parts = file_path.split('src/components/')
+            if len(module_parts) > 1:
+                component_category = module_parts[1].split('/')[0]
+                module_info = f"이 코드는 '{component_category}' 컴포넌트 카테고리에 속합니다. "
+        elif 'src/pages/' in file_path:
+            module_info = "이 코드는 페이지 컴포넌트입니다. "
+        elif 'src/contexts/' in file_path:
+            module_info = "이 코드는 Context API와 관련된 파일입니다. "
+        elif 'src/services/' in file_path:
+            module_info = "이 코드는 API 서비스와 관련된 파일입니다. "
+        elif 'src/utils/' in file_path:
+            module_info = "이 코드는 유틸리티 함수를 포함합니다. "
+        elif 'deployment/' in file_path:
+            module_info = "이 코드는 배포 설정과 관련된 파일입니다. "
+        
+        code_description += module_info
+        
+        # 타입별 설명 추가
+        if frag_type == 'component':
+            comp_type = metadata.get('component_type', 'unknown')
+            purpose = metadata.get('purpose', '')
+            props = metadata.get('props', [])
+            
+            code_description += f"이것은 {comp_type} 방식의 React 컴포넌트입니다. "
+            
+            # lifesub-web 특화 목적 추가
+            if 'Login' in name or 'Auth' in name:
+                code_description += "이 컴포넌트는 사용자 인증 및, 로그인 기능을 담당합니다. "
+            elif 'Subscription' in name:
+                code_description += "이 컴포넌트는 구독 서비스 관리 기능을 담당합니다. "
+            elif 'List' in name:
+                code_description += "이 컴포넌트는 목록 형태의 데이터를 표시합니다. "
+            elif 'Detail' in name:
+                code_description += "이 컴포넌트는 상세 정보를 표시합니다. "
+            elif 'Card' in name:
+                code_description += "이 컴포넌트는 카드 형태의 UI를 표시합니다. "
+            elif 'Loading' in name:
+                code_description += "이 컴포넌트는 로딩 상태를 표시합니다. "
+            elif 'Error' in name:
+                code_description += "이 컴포넌트는 오류 메시지를 표시합니다. "
+            
+            if purpose:
+                code_description += f"주요 목적은 {purpose}입니다. "
+            
+            if props:
+                code_description += f"이 컴포넌트는 다음 props를 사용합니다: {', '.join(props[:5])}. "
+        
+        elif frag_type == 'function':
+            if 'handle' in name.lower():
+                code_description += "이 함수는 이벤트 핸들러입니다. "
+            elif 'fetch' in name.lower() or 'get' in name.lower():
+                code_description += "이 함수는 데이터를 가져오는 역할을 합니다. "
+            elif 'format' in name.lower():
+                code_description += "이 함수는 데이터 포맷팅을 담당합니다. "
+            
+            parent = metadata.get('parent_id', None)
+            if parent:
+                code_description += "이 함수는 상위 컴포넌트의 내부 함수입니다. "
+        
+        elif frag_type == 'api_call':
+            api_service = metadata.get('api_service', '')
+            http_method = metadata.get('http_method', '')
+            
+            # lifesub-web API 서비스 특화 설명
+            if api_service == 'mySubscriptionApi':
+                code_description += "이 코드는 구독 관리 API를 호출합니다. "
+                if http_method == 'get':
+                    code_description += "구독 정보를 조회합니다. "
+                elif http_method == 'post':
+                    code_description += "새로운 구독을 등록합니다. "
+                elif http_method == 'delete':
+                    code_description += "구독을 취소합니다. "
+            elif api_service == 'authApi':
+                code_description += "이 코드는 인증 관련 API를 호출합니다. "
+                if http_method == 'post' and 'login' in content.lower():
+                    code_description += "사용자 로그인을 처리합니다. "
+                elif http_method == 'post' and 'logout' in content.lower():
+                    code_description += "사용자 로그아웃을 처리합니다. "
+            elif api_service == 'recommendApi':
+                code_description += "이 코드는 구독 추천 API를 호출합니다. "
+        
+        elif frag_type == 'jsx_element':
+            if 'Card' in name or 'Paper' in name:
+                code_description += "이 JSX 요소는 카드 형태의 UI 컴포넌트를 렌더링합니다. "
+            elif 'List' in name:
+                code_description += "이 JSX 요소는 목록 형태의 UI를 렌더링합니다. "
+            elif 'Button' in name:
+                code_description += "이 JSX 요소는 버튼을 렌더링합니다. "
+            elif 'Box' in name or 'Container' in name:
+                code_description += "이 JSX 요소는 레이아웃 컨테이너입니다. "
+        
+        elif frag_type == 'mui_component':
+            code_description += "이 코드는 Material UI 라이브러리의 컴포넌트를 사용합니다. "
+            if 'Card' in content or 'Paper' in content:
+                code_description += "Card 또는 Paper 컴포넌트로 콘텐츠를 그룹화합니다. "
+            if 'Grid' in content:
+                code_description += "Grid 시스템으로 레이아웃을 구성합니다. "
+            if 'Typography' in content:
+                code_description += "Typography 컴포넌트로 텍스트 스타일을 적용합니다. "
+            if 'CircularProgress' in content:
+                code_description += "로딩 상태를 표시하는 CircularProgress를 사용합니다. "
+        
+        elif frag_type == 'state_logic':
+            if 'useState' in content:
+                code_description += "이 코드는 React useState 훅을 사용하여 상태를 관리합니다. "
+            if 'useEffect' in content:
+                code_description += "이 코드는 React useEffect 훅을 사용하여 사이드 이펙트를 처리합니다. "
+                
+                # lifesub-web 특화 API 호출 패턴 감지
+                if 'mySubscriptionApi' in content:
+                    code_description += "구독 서비스 API를 호출합니다. "
+                elif 'authApi' in content:
+                    code_description += "인증 관련 API를 호출합니다. "
+                elif 'recommendApi' in content:
+                    code_description += "추천 서비스 API를 호출합니다. "
+                
+                dependencies = metadata.get('dependencies', [])
+                if dependencies:
+                    code_description += f"이 effect는 다음 의존성이 변경될 때 실행됩니다: {', '.join(dependencies[:3])}. "
+        
+        elif frag_type == 'routing':
+            code_description += "이 코드는 React Router를 사용한 라우팅 관련 로직입니다. "
+            router_api = metadata.get('router_api', '')
+            if router_api == 'useNavigate':
+                code_description += "페이지 이동 함수를 사용합니다. "
+            elif router_api == 'useParams':
+                code_description += "URL 파라미터를 추출합니다. "
+            elif router_api == 'Route':
+                code_description += "라우트 정의를 포함합니다. "
+        
+        elif frag_type == 'import_block':
+            code_description += "이 코드는 import 문을 포함합니다. "
+            libraries = metadata.get('libraries', {})
+            imported_libs = []
+            
+            if libraries.get('react', False):
+                imported_libs.append("React")
+            if libraries.get('react-router', False):
+                imported_libs.append("React Router")
+            if libraries.get('mui', False):
+                imported_libs.append("Material UI")
+            if libraries.get('api', False):
+                imported_libs.append("API 서비스")
+            if libraries.get('hooks', False):
+                imported_libs.append("커스텀 훅")
+                
+            if imported_libs:
+                code_description += f"주요 라이브러리: {', '.join(imported_libs)}. "
+        
+        # 문맥 정보 구성 (기존 로직 확장)
         context_parts = []
         
         # 1. 기본 타입별 접두사
         if frag_type in self.context_keywords:
-            context_parts.append(f"{' '.join(self.context_keywords[frag_type][:2])}")
+            context_parts.append(f"{' '.join(self.context_keywords[frag_type][:3])}")
         
         # 2. 이름과 메타데이터
         context_parts.append(f"{name}")
         
         # 3. 파일 경로 정보
-        file_name = metadata.get('file_name', '')
         if file_name:
             context_parts.append(f"파일: {file_name}")
         
@@ -182,18 +340,18 @@ class CodeEmbedder:
             props = metadata.get('props', [])
             if props:
                 context_parts.append(f"Props: {', '.join(props[:5])}")
-                
+                    
         elif frag_type == 'api_call':
             api_service = metadata.get('api_service', '')
             http_method = metadata.get('http_method', '')
             if api_service and http_method:
                 context_parts.append(f"API: {api_service}.{http_method}")
-                
+                    
         elif frag_type == 'state_logic':
             dependencies = metadata.get('dependencies', [])
             if dependencies:
                 context_parts.append(f"의존성: {', '.join(dependencies[:5])}")
-                
+                    
         elif frag_type == 'mui_component':
             context_parts.append("Material UI 컴포넌트")
         
@@ -201,16 +359,20 @@ class CodeEmbedder:
         context = ' | '.join(context_parts)
         
         # 최대 텍스트 길이 제한 (모델 한계 고려)
-        max_context_length = 150  # 컨텍스트 최대 길이
-        max_content_length = 512 - max_context_length  # 컨텐츠 최대 길이
+        max_description_length = 200  # 설명 최대 길이
+        max_context_length = 150      # 컨텍스트 최대 길이
+        max_content_length = 512 - max_description_length - max_context_length  # 컨텐츠 최대 길이
         
+        if len(code_description) > max_description_length:
+            code_description = code_description[:max_description_length]
+            
         if len(context) > max_context_length:
             context = context[:max_context_length]
-            
+                
         if len(content) > max_content_length:
             content = content[:max_content_length]
         
         # 최종 임베딩 텍스트 생성
-        embedding_text = f"{context}\n\n{content}"
+        embedding_text = f"{code_description}\n\n{context}\n\n{content}"
         
         return embedding_text
