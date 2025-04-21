@@ -232,6 +232,7 @@ backend-fragmentor/
     ├── storage/                 # 벡터 저장소
     │   └── faiss_store.py       # Faiss 벡터 저장소
     └── main.py                  # 애플리케이션 진입점
+    └── __init__.py              # 버전 정보 제공
 ```
 
 ## 확장 및 개선 방향
@@ -303,7 +304,6 @@ pip install -r requirements.txt
 - SentenceTransformer와 Faiss를 사용하므로 충분한 메모리가 필요합니다.
 - 가상환경 디렉토리(venv/)는 Git에 포함시키지 말고 `.gitignore`에 추가하세요.
 - 특정 버전의 pip(25.0.1)이 필요하므로 가상환경 활성화 후 첫 번째로 pip를 업그레이드하세요.
-- MacBook M4 + NPU 환경에서 최적화된 패키지 버전을 사용해야 합니다. 특히 torch 및 sentence-transformers 패키지의 버전을 정확히 맞추는 것이 중요합니다.
 - 환경 구성 시 발생하는 dependency 충돌 문제는 `pip install --no-deps <package>` 옵션을 사용하여 해결할 수 있습니다.
 
 ## 라이선스
