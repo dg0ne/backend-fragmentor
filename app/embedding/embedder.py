@@ -29,6 +29,19 @@ class CodeEmbedder:
         if cache_dir and not os.path.exists(cache_dir):
             os.makedirs(cache_dir, exist_ok=True)
             
+        # 파편 타입별 가중치 설정 추가
+        self.type_weights = {
+            'component': 2.0,     # 컴포넌트는 가장 중요
+            'function': 1.8,      # 함수도 중요
+            'api_call': 1.7,      # API 호출도 중요
+            'state_logic': 1.6,   # 상태 로직도 중요
+            'routing': 1.5,       # 라우팅도 중요
+            'jsx_element': 1.3,   # JSX 요소는 중간 중요도
+            'mui_component': 1.2, # MUI 컴포넌트는 중간 중요도
+            'import_block': 0.8,  # import 블록은 덜 중요
+            'style_block': 0.5    # style 블록은 가장 덜 중요
+        }
+            
         # lifesub-web 프로젝트 특화 문맥 키워드
         self.context_keywords = {
             'component': ['리액트', '컴포넌트', 'React', 'component', 'UI', '사용자 인터페이스'],
@@ -54,7 +67,7 @@ class CodeEmbedder:
     
     def embed_fragment(self, fragment: Dict[str, Any]) -> np.ndarray:
         """
-        단일 코드 파편 임베딩
+        단일 코드 파편 임베딩 (가중치 적용)
         
         Args:
             fragment: 코드 파편 객체
@@ -67,20 +80,73 @@ class CodeEmbedder:
             cache_path = os.path.join(self.cache_dir, f"{fragment['id']}.pkl")
             if os.path.exists(cache_path):
                 with open(cache_path, 'rb') as f:
-                    return pickle.load(f)
+                    # 캐시에서 가져온 임베딩도 가중치 적용
+                    base_embedding = pickle.load(f)
+                    return self._apply_weights(base_embedding, fragment)
         
         # 임베딩 생성을 위한 텍스트 구성
         embedding_text = self._prepare_embedding_text(fragment)
         
         # 임베딩 생성
-        embedding = self.model.encode(embedding_text)
+        base_embedding = self.model.encode(embedding_text)
         
-        # 캐시 저장
+        # 가중치 적용된 임베딩
+        weighted_embedding = self._apply_weights(base_embedding, fragment)
+        
+        # 캐시 저장 (원본 임베딩만 저장, 가중치는 실시간 적용)
         if self.cache_dir:
             with open(cache_path, 'wb') as f:
-                pickle.dump(embedding, f)
+                pickle.dump(base_embedding, f)
         
-        return embedding
+        return weighted_embedding
+    
+    def _apply_weights(self, embedding: np.ndarray, fragment: Dict[str, Any]) -> np.ndarray:
+        """
+        임베딩에 파편 타입 가중치 적용
+        
+        Args:
+            embedding: 원본 임베딩 벡터
+            fragment: 코드 파편 정보
+            
+        Returns:
+            np.ndarray: 가중치 적용된 임베딩
+        """
+        # 파편 타입에 따른 가중치 적용
+        fragment_type = fragment['type']
+        weight = self.type_weights.get(fragment_type, 1.0)
+        
+        # 코드 길이에 따른 추가 가중치 (최대 50% 추가)
+        content_length = len(fragment.get('content', ''))
+        length_factor = min(1.0 + (content_length / 1000), 1.5)
+        
+        # 특정 키워드 검색 관련성 강화
+        content = fragment.get('content', '').lower()
+        name = fragment.get('name', '').lower()
+        file_name = fragment.get('metadata', {}).get('file_name', '').lower()
+        keyword_bonus = 1.0
+        
+        # 로그인/인증 관련 코드에 보너스
+        if ('login' in content or 'auth' in content or 
+            'login' in name or 'auth' in name or 
+            'login' in file_name or 'auth' in file_name or
+            'password' in content or 'user' in content):
+            keyword_bonus += 0.3
+            
+        # 구독 관련 코드에 보너스
+        if ('subscription' in content or 'subscribe' in content or 
+            '구독' in content or 'subscription' in name or
+            'subscription' in file_name):
+            keyword_bonus += 0.3
+            
+        # 최종 가중치 적용
+        final_weight = weight * length_factor * keyword_bonus
+        weighted_embedding = embedding * final_weight
+        
+        # 정규화 (코사인 유사도를 위해)
+        norm = np.linalg.norm(weighted_embedding)
+        if norm > 0:
+            return weighted_embedding / norm
+        return weighted_embedding
     
     def embed_fragments(self, fragments: List[Dict[str, Any]], batch_size: int = 32) -> Dict[str, np.ndarray]:
         """
@@ -96,6 +162,7 @@ class CodeEmbedder:
         embeddings = {}
         texts_to_embed = []
         ids_to_embed = []
+        fragments_to_embed = []  # 가중치 적용을 위해 전체 fragment 객체 저장
         
         print(f"총 {len(fragments)}개 파편 임베딩 생성 중...")
         
@@ -108,13 +175,16 @@ class CodeEmbedder:
                 cache_path = os.path.join(self.cache_dir, f"{fragment_id}.pkl")
                 if os.path.exists(cache_path):
                     with open(cache_path, 'rb') as f:
-                        embeddings[fragment_id] = pickle.load(f)
+                        base_embedding = pickle.load(f)
+                        # 가중치 적용
+                        embeddings[fragment_id] = self._apply_weights(base_embedding, fragment)
                         continue
             
             # 임베딩 필요한 파편 추가
             embedding_text = self._prepare_embedding_text(fragment)
             texts_to_embed.append(embedding_text)
             ids_to_embed.append(fragment_id)
+            fragments_to_embed.append(fragment)  # 가중치 적용을 위해 저장
         
         # 임베딩이 필요한 것이 있을 경우만 처리
         if texts_to_embed:
@@ -122,19 +192,25 @@ class CodeEmbedder:
             for i in tqdm(range(0, len(texts_to_embed), batch_size)):
                 batch_texts = texts_to_embed[i:i+batch_size]
                 batch_ids = ids_to_embed[i:i+batch_size]
+                batch_fragments = fragments_to_embed[i:i+batch_size]
                 
                 # 배치 임베딩 생성
                 batch_embeddings = self.model.encode(batch_texts)
                 
                 # 결과 저장 및 캐싱
                 for j, fragment_id in enumerate(batch_ids):
-                    embeddings[fragment_id] = batch_embeddings[j]
+                    # 원본 임베딩
+                    base_embedding = batch_embeddings[j]
                     
-                    # 캐시 저장
+                    # 가중치 적용
+                    weighted_embedding = self._apply_weights(base_embedding, batch_fragments[j])
+                    embeddings[fragment_id] = weighted_embedding
+                    
+                    # 캐시 저장 (원본 임베딩만 저장)
                     if self.cache_dir:
                         cache_path = os.path.join(self.cache_dir, f"{fragment_id}.pkl")
                         with open(cache_path, 'wb') as f:
-                            pickle.dump(batch_embeddings[j], f)
+                            pickle.dump(base_embedding, f)
         
         return embeddings
     

@@ -34,6 +34,15 @@ class ReactFragmenter:
         self.router_pattern = re.compile(r'(useNavigate|useParams|useLocation|Navigate|Routes|Route)')
         self.mui_component_pattern = re.compile(r'<(Box|Typography|Button|Card|Paper|Grid|TextField|Container|CircularProgress)')
         
+        # 파편화 최소 크기 설정 추가
+        self.min_component_size = 150  # 최소 150자 이상
+        self.min_function_size = 80    # 최소 80자 이상
+        self.min_jsx_size = 120        # 최소 120자 이상
+        self.min_api_call_size = 100   # 최소 100자 이상
+        self.min_style_block_size = 150  # 최소 150자 이상
+        self.min_routing_size = 100    # 최소 100자 이상
+        self.min_hook_size = 120       # 최소 120자 이상
+        
     def fragment_file(self, parsed_file: Dict[str, Any]) -> List[Dict[str, Any]]:
         """
         파싱된 파일에서 의미 있는 코드 파편들을 추출
@@ -57,16 +66,17 @@ class ReactFragmenter:
         
         file_info = parsed_file['file_info']
         
-        # 컴포넌트 파편화
+        # 컴포넌트 파편화 (크기 체크 추가)
         for component in parsed_file.get('components', []):
-            fragment = self._create_component_fragment(component, file_info)
-            fragments.append(fragment)
-            
-            # 컴포넌트 내부 함수 및 JSX 요소 추가 파편화
-            sub_fragments = self._extract_subfragments(component['code'], fragment['id'], file_info)
-            fragments.extend(sub_fragments)
+            if len(component['code']) >= self.min_component_size:  # 크기 체크 추가
+                fragment = self._create_component_fragment(component, file_info)
+                fragments.append(fragment)
+                
+                # 컴포넌트 내부 함수 및 JSX 요소 추가 파편화
+                sub_fragments = self._extract_subfragments(component['code'], fragment['id'], file_info)
+                fragments.extend(sub_fragments)
         
-        # JSX 요소 파편화 (컴포넌트 외부에 있는 JSX)
+        # JSX 요소 파편화 (컴포넌트 외부에 있는 JSX) (크기 체크 추가)
         for jsx_element in parsed_file.get('jsx_elements', []):
             # 이미 컴포넌트의 일부로 파편화된 것 건너뛰기
             is_already_fragmented = False
@@ -76,13 +86,13 @@ class ReactFragmenter:
                     is_already_fragmented = True
                     break
                     
-            if not is_already_fragmented:
+            if not is_already_fragmented and len(jsx_element['code']) >= self.min_jsx_size:  # 크기 체크 추가
                 fragment = self._create_jsx_fragment(jsx_element, file_info)
                 fragments.append(fragment)
         
-        # 훅 파편화
+        # 훅 파편화 (크기 체크 추가)
         for hook in parsed_file.get('hooks', []):
-            if hook['type'] == 'custom':  # 커스텀 훅만 독립 파편으로
+            if hook['type'] == 'custom' and 'code' in hook and len(hook['code']) >= self.min_hook_size:  # 커스텀 훅만 독립 파편으로, 크기 체크 추가
                 fragment = self._create_hook_fragment(hook, file_info)
                 fragments.append(fragment)
         
@@ -91,12 +101,14 @@ class ReactFragmenter:
         if import_fragment:
             fragments.append(import_fragment)
         
-        # API 호출 파편화
+        # API 호출 파편화 (크기 체크 추가)
         api_fragments = self._extract_api_calls(parsed_file['raw_code'], file_info)
+        api_fragments = [f for f in api_fragments if len(f['content']) >= self.min_api_call_size]  # 크기 필터링
         fragments.extend(api_fragments)
         
-        # 라우팅 관련 코드 파편화
+        # 라우팅 관련 코드 파편화 (크기 체크 추가)
         routing_fragments = self._extract_routing_code(parsed_file['raw_code'], file_info)
+        routing_fragments = [f for f in routing_fragments if len(f['content']) >= self.min_routing_size]  # 크기 필터링
         fragments.extend(routing_fragments)
         
         return fragments
@@ -190,7 +202,7 @@ class ReactFragmenter:
             func_name = match.group(2)
             func_code = self._extract_code_block(component_code, func_start)
             
-            if func_code:
+            if func_code and len(func_code) >= self.min_function_size:  # 크기 체크 추가
                 sub_fragments.append({
                     'id': str(uuid.uuid4()),
                     'type': 'function',
@@ -212,7 +224,7 @@ class ReactFragmenter:
             func_name = match.group(1)
             func_code = self._extract_code_block(component_code, func_start)
             
-            if func_code:
+            if func_code and len(func_code) >= self.min_function_size:  # 크기 체크 추가
                 sub_fragments.append({
                     'id': str(uuid.uuid4()),
                     'type': 'function',
@@ -234,7 +246,7 @@ class ReactFragmenter:
             effect_start = match.start()
             effect_code = self._extract_effect_block(component_code, effect_start)
             
-            if effect_code:
+            if effect_code and len(effect_code) >= self.min_function_size:  # 크기 체크 추가
                 dependencies = self._extract_effect_dependencies(effect_code)
                 
                 sub_fragments.append({
@@ -260,7 +272,7 @@ class ReactFragmenter:
             jsx_code = match.group(0)
             
             # 일정 크기 이상의 JSX 요소만 파편화
-            if len(jsx_code) > 80:  # 크기 기준은 필요에 따라 조정
+            if len(jsx_code) >= self.min_jsx_size:  # 크기 체크 강화
                 sub_fragments.append({
                     'id': str(uuid.uuid4()),
                     'type': 'jsx_element',
@@ -284,7 +296,7 @@ class ReactFragmenter:
             # 해당 JSX 요소 전체 추출 시도
             jsx_code = self._extract_jsx_element(component_code, mui_start)
             
-            if jsx_code and len(jsx_code) > 50:
+            if jsx_code and len(jsx_code) >= self.min_jsx_size:  # 크기 체크 추가
                 sub_fragments.append({
                     'id': str(uuid.uuid4()),
                     'type': 'mui_component',
@@ -306,7 +318,7 @@ class ReactFragmenter:
             style_start = match.start()
             style_code = self._extract_code_block(component_code, style_start)
             
-            if style_code:
+            if style_code and len(style_code) >= self.min_style_block_size:  # 크기 체크 추가
                 sub_fragments.append({
                     'id': str(uuid.uuid4()),
                     'type': 'style_block',
@@ -539,19 +551,21 @@ class ReactFragmenter:
                 # 추출 실패 시, 적당한 길이만큼만 추출
                 comp_code = code[start_pos:min(start_pos + 500, len(code))]
             
-            fragments.append({
-                'id': str(uuid.uuid4()),
-                'type': 'component',
-                'name': comp_name,
-                'content': self._normalize_code(comp_code),
-                'metadata': {
-                    'file_path': file_info['file_path'],
-                    'file_name': file_info['file_name'],
-                    'start_pos': start_pos,
-                    'length': len(comp_code),
-                    'fallback_extraction': True
-                }
-            })
+            # 크기 체크 추가
+            if len(comp_code) >= self.min_component_size:
+                fragments.append({
+                    'id': str(uuid.uuid4()),
+                    'type': 'component',
+                    'name': comp_name,
+                    'content': self._normalize_code(comp_code),
+                    'metadata': {
+                        'file_path': file_info['file_path'],
+                        'file_name': file_info['file_name'],
+                        'start_pos': start_pos,
+                        'length': len(comp_code),
+                        'fallback_extraction': True
+                    }
+                })
             
         # import 문 추출 시도
         import_fragment = self._extract_import_statements(code, file_info)
@@ -560,6 +574,7 @@ class ReactFragmenter:
             
         # API 호출 추출 시도
         api_fragments = self._extract_api_calls(code, file_info)
+        api_fragments = [f for f in api_fragments if len(f['content']) >= self.min_api_call_size]  # 크기 필터링
         fragments.extend(api_fragments)
         
         return fragments
@@ -610,7 +625,7 @@ class ReactFragmenter:
             return 'arrow_function'
         else:
             return 'unknown'
-    
+            
     def fragment_project(self, parsed_project: Dict[str, Any]) -> Dict[str, Any]:
         """
         파싱된 프로젝트 전체 파편화

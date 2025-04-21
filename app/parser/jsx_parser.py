@@ -32,7 +32,11 @@ class EnhancedJSXParser:
         
         # JSX 요소 패턴 (복잡한 중첩 구조를 고려한 단순화된 버전)
         self.jsx_element_pattern = re.compile(r'<([A-Z][a-zA-Z0-9]*)[\s\w=>"/\'\.:\-\(\)]*>[\s\S]*?</\1>', re.DOTALL)
-        
+       
+        # 스타일 블록 감지 패턴 추가 - 작은 스타일 단위가 아닌 전체 스타일 객체 추출용
+        self.style_block_pattern = re.compile(r'(const\s+styles\s*=\s*{[\s\S]*?};|sx\s*=\s*{[\s\S]*?})', re.DOTALL)
+
+
         # MUI 컴포넌트 감지 패턴
         self.mui_import_pattern = re.compile(r'import\s+\{(.*?)\}\s+from\s+[\'"]@mui/material[\'"](.*?);')
         
@@ -45,6 +49,10 @@ class EnhancedJSXParser:
             r'public',
             r'\.env'
         ]
+
+        # 최소 크기 설정 (jsx_parser 단계에서도 필터링)
+        self.min_jsx_size = 120  # 최소 120자 이상의 JSX 요소만 추출
+        self.min_style_size = 150  # 최소 150자 이상의 스타일 블록만 추출
         
     def should_ignore_file(self, file_path: str) -> bool:
         """
@@ -115,8 +123,11 @@ class EnhancedJSXParser:
             # 훅 식별
             hooks = self._identify_hooks(code)
             
-            # JSX 요소 식별
+            # JSX 요소 식별 (크기 제한 적용)
             jsx_elements = self._identify_jsx_elements(code)
+            
+            # 스타일 블록 식별 (새로 추가)
+            style_blocks = self._identify_style_blocks(code)
             
             # MUI 컴포넌트 사용 감지
             mui_components = self._detect_mui_components(code)
@@ -127,6 +138,7 @@ class EnhancedJSXParser:
                 'components': components,
                 'hooks': hooks,
                 'jsx_elements': jsx_elements,
+                'style_blocks': style_blocks,
                 'mui_components': mui_components,
                 'raw_code': code
             }
@@ -300,7 +312,7 @@ class EnhancedJSXParser:
             jsx_code = match.group(0)
             
             # 일정 크기 이상의 JSX 요소만 추출
-            if len(jsx_code) > 50:  # 임계값 설정
+            if len(jsx_code) >= self.min_jsx_size:  # 크기 체크 추가
                 jsx_elements.append({
                     'name': element_name,
                     'start_pos': match.start(),
@@ -308,6 +320,27 @@ class EnhancedJSXParser:
                 })
         
         return jsx_elements
+    
+    # 스타일 블록 추출 함수 추가
+    def _identify_style_blocks(self, code: str) -> List[Dict[str, Any]]:
+        """코드에서 의미 있는 스타일 블록 식별"""
+        style_blocks = []
+        
+        # 스타일 블록 패턴 매칭
+        matches = self.style_block_pattern.finditer(code)
+        
+        for match in matches:
+            style_code = match.group(0)
+            
+            # 작은 스타일 블록 무시
+            if len(style_code) >= self.min_style_size:
+                style_blocks.append({
+                    'name': 'styles',
+                    'start_pos': match.start(),
+                    'code': style_code
+                })
+        
+        return style_blocks
     
     def _detect_mui_components(self, code: str) -> Dict[str, Any]:
         """Material-UI 컴포넌트 사용 감지"""
