@@ -255,46 +255,51 @@ backend-fragmentor/
 - 코드 관계 시각화
 - 복잡한 쿼리 구문 지원
 
-## 의존성 관리
+### 요구 사항
 
-프로젝트의 의존성은 가상환경(venv)과 `requirements.txt`를 통해 관리됩니다:
+- Python 3.11.1+ 이상
+- 필요한 패키지:
+  - requirements.txt 참고
+
+
+### 설치
 
 ```bash
-# 현재 설치된 패키지 확인
-pip list
+# 저장소 클론
+git clone https://github.com/dg0ne/backend-fragmentor.git
+cd backend-fragmentor
 
-# 특정 pip 버전 설치 (프로젝트에는 25.0.1 버전 필요)
-pip install --upgrade pip==25.0.1
+# 가상환경 설정
+python -m venv venv
+source venv/bin/activate  # Linux/Mac
+# 또는
+venv\Scripts\activate     # Windows
 
-# 의존성 업데이트
-pip install --upgrade <package_name>
-
-# 특정 버전 패키지 설치
-pip install <package_name>==<version>
-
-# 현재 설치된 패키지를 requirements.txt로 저장
-pip freeze > requirements.txt
-
-# 새로운 가상환경 생성 시 의존성 설치
-python -m venv new_venv
-source new_venv/bin/activate  # Linux/Mac
-pip install --upgrade pip==25.0.1  # 먼저 pip 버전 업그레이드
+# 의존성 설치
 pip install -r requirements.txt
 ```
 
-### 주요 패키지 버전 요구사항
+### 실행 방법
 
-프로젝트에 필요한 특정 버전의 주요 패키지들:
+#### 코드 파편화 및 벡터화
 
-- pip==25.0.1
-- sentence-transformers==2.2.2
-- faiss-cpu==1.7.4
-- torch==2.0.1
-- esprima==4.0.1
-- tqdm==4.65.0
-- colorama (최신 버전)
+```bash
+# lifesub-web 프로젝트 파편화
+python lifesubweb-fragmentor.py --project ../lifesub-web
 
-이러한 버전 요구사항은 호환성 문제를 방지하고 일관된 환경을 유지하기 위해 중요합니다.
+# 커스텀 데이터 디렉토리 지정
+python lifesubweb-fragmentor.py --project ../lifesub-web --data-dir ./custom-data-dir
+```
+
+#### 코드 검색
+
+```bash
+# 대화형 검색 인터페이스 실행
+python search_ui.py
+
+# 데이터 디렉토리 지정
+python search_ui.py --data-dir ./custom-data-dir
+```
 
 
 ## 주의사항
