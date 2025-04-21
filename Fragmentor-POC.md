@@ -40,8 +40,39 @@
 git clone https://github.com/your-org/backend-fragmentor.git
 cd backend-fragmentor
 
+# 가상환경 설정
+python -m venv venv
+source venv/bin/activate  # Linux/Mac
+# 또는
+venv\Scripts\activate     # Windows
+
+# pip 버전 업그레이드 (25.0.1 버전 필요)
+pip install --upgrade pip==25.0.1
+
 # 의존성 설치
 pip install -r requirements.txt
+```
+
+### 가상환경(venv) 활용
+
+생성한 가상환경(venv)은 다음과 같은 용도로 활용됩니다:
+
+- **의존성 관리**: 프로젝트에 필요한 패키지만 설치하여 환경을 깨끗하게 유지
+- **패키지 격리**: 다른 Python 프로젝트와의 패키지 버전 충돌 방지
+- **Python 버전 관리**: 특정 Python 버전으로 프로젝트 실행 가능
+- **재현 가능한 환경**: `requirements.txt`를 통해 동일한 환경을 쉽게 재현
+- **배포 준비**: 가상환경을 통해 실제 서비스 배포 시의 환경과 유사하게 테스트
+
+개발 및 실행 시 항상 가상환경을 활성화한 상태에서 진행하는 것이 좋습니다:
+
+```bash
+# 가상환경 활성화
+source venv/bin/activate  # Linux/Mac
+# 또는
+venv\Scripts\activate     # Windows
+
+# 가상환경 종료
+deactivate
 ```
 
 ### 실행 방법
@@ -49,6 +80,7 @@ pip install -r requirements.txt
 #### 1. 코드 파편화 및 벡터화
 
 ```bash
+# 가상환경 활성화 후
 # lifesub-web 프로젝트 파편화
 python lifesubweb-fragmentor.py --project /path/to/lifesub-web
 
@@ -59,6 +91,7 @@ python lifesubweb-fragmentor.py --project /path/to/lifesub-web --data-dir ./cust
 #### 2. 코드 검색
 
 ```bash
+# 가상환경 활성화 후
 # 대화형 검색 인터페이스 실행
 python search_ui.py
 
@@ -91,8 +124,13 @@ python lifesubweb-fragmentor.py --project /path/to/lifesub-web --search
 다음은 실제 실행 과정과 사용 예시입니다:
 
 ```bash
-# 1. 파편화 및 벡터화 실행
-$ python lifesubweb-fragmentor.py --project ../lifesub-web --data-dir ./data
+# 1. 가상환경 활성화
+source venv/bin/activate  # Linux/Mac
+# 또는
+venv\Scripts\activate     # Windows
+
+# 2. 파편화 및 벡터화 실행
+python lifesubweb-fragmentor.py --project ../lifesub-web --data-dir ./data
 
 ================================================
  lifesub-web 프로젝트 파편화 및 벡터화 시작: ../lifesub-web
@@ -130,8 +168,8 @@ lifesub-web 프로젝트 파싱 중: ../lifesub-web
   - 파편 타입 분포: {'component': 24, 'function': 43, 'jsx_element': 21, 'import_block': 14, 'api_call': 8, 'routing': 2}
   - 처리된 파일 수: 31
 
-# 2. 대화형 검색 UI 실행
-$ python search_ui.py --data-dir ./data
+# 3. 대화형 검색 UI 실행
+python search_ui.py --data-dir ./data
 ```
 
 ## 파편화 프로세스 상세
@@ -183,6 +221,7 @@ backend-fragmentor/
 ├── Fragmentor-POC.md            # POC 설명 문서
 ├── fragmentor_process.mmd       # 프로세스 다이어그램
 ├── search_ui_example.svg        # 예시 이미지
+├── venv/                        # 가상환경 디렉토리
 └── app/                         # 핵심 모듈
     ├── parser/                  # 코드 파서
     │   └── jsx_parser.py        # 향상된 JSX 파서
@@ -215,11 +254,57 @@ backend-fragmentor/
 - 코드 관계 시각화
 - 복잡한 쿼리 구문 지원
 
+## 의존성 관리
+
+프로젝트의 의존성은 가상환경(venv)과 `requirements.txt`를 통해 관리됩니다:
+
+```bash
+# 현재 설치된 패키지 확인
+pip list
+
+# 특정 pip 버전 설치 (프로젝트에는 25.0.1 버전 필요)
+pip install --upgrade pip==25.0.1
+
+# 의존성 업데이트
+pip install --upgrade <package_name>
+
+# 특정 버전 패키지 설치
+pip install <package_name>==<version>
+
+# 현재 설치된 패키지를 requirements.txt로 저장
+pip freeze > requirements.txt
+
+# 새로운 가상환경 생성 시 의존성 설치
+python -m venv new_venv
+source new_venv/bin/activate  # Linux/Mac
+pip install --upgrade pip==25.0.1  # 먼저 pip 버전 업그레이드
+pip install -r requirements.txt
+```
+
+### 주요 패키지 버전 요구사항
+
+프로젝트에 필요한 특정 버전의 주요 패키지들:
+
+- pip==25.0.1
+- sentence-transformers==2.2.2
+- faiss-cpu==1.7.4
+- torch==2.0.1
+- esprima==4.0.1
+- tqdm==4.65.0
+- colorama (최신 버전)
+
+이러한 버전 요구사항은 호환성 문제를 방지하고 일관된 환경을 유지하기 위해 중요합니다.
+
+
 ## 주의사항
 
 - 현재 이 코드는 POC 단계로, 프로덕션 환경에서의 사용은 권장하지 않습니다.
 - 데이터 디렉토리에 생성되는 인덱스 및 캐시 파일은 상당한 용량을 차지할 수 있으니 `.gitignore`에 추가하여 관리하세요.
 - SentenceTransformer와 Faiss를 사용하므로 충분한 메모리가 필요합니다.
+- 가상환경 디렉토리(venv/)는 Git에 포함시키지 말고 `.gitignore`에 추가하세요.
+- 특정 버전의 pip(25.0.1)이 필요하므로 가상환경 활성화 후 첫 번째로 pip를 업그레이드하세요.
+- MacBook M4 + NPU 환경에서 최적화된 패키지 버전을 사용해야 합니다. 특히 torch 및 sentence-transformers 패키지의 버전을 정확히 맞추는 것이 중요합니다.
+- 환경 구성 시 발생하는 dependency 충돌 문제는 `pip install --no-deps <package>` 옵션을 사용하여 해결할 수 있습니다.
 
 ## 라이선스
 

@@ -4,7 +4,7 @@ pyjsparser==2.7.1      # 대체 JS 파서 (필요시)
 
 # 임베딩
 sentence-transformers==2.2.2
-torch==2.0.1
+torch==2.6.0
 
 # 벡터 저장
 faiss-cpu==1.7.4       # GPU 사용 시 faiss-gpu 설치
