@@ -13,7 +13,7 @@ from typing import Dict, List, Any
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from app.parser.jsx_parser import parse_react_project
-from app.fragmenter.fragmenter import ReactFragmenter
+from app.fragmentation.fragment import ReactFragmenter
 from app.embedding.embedder import CodeEmbedder
 from app.storage.faiss_store import FaissVectorStore
 

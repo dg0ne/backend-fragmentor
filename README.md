@@ -93,14 +93,10 @@ app/
 
 ### 요구 사항
 
-- Python 3.9 이상
+- Python 3.11.1+ 이상
 - 필요한 패키지:
-  - esprima==4.0.1
-  - sentence-transformers==2.2.2
-  - faiss-cpu==1.7.4
-  - torch==2.0.1
-  - colorama
-  - tqdm==4.65.0
+  - requirements.txt 참고
+
 
 ### 설치
 
