@@ -1,19 +1,20 @@
-# 코드 파싱
-esprima==4.0.1  # JavaScript/JSX 파싱
-pyjsparser==2.7.1      # 대체 JS 파서 (필요시)
+# Python 3.13.1 
+# 필수 빌드 도구
+wheel>=0.41.2
 
-# 임베딩
-sentence-transformers==2.2.2
-torch==2.6.0
+# 코드 파싱
+esprima==4.0.1                 # JavaScript/JSX 파싱
+pyjsparser==2.7.1              # JS 파서
 
 # 벡터 저장
-faiss-cpu==1.7.4       # GPU 사용 시 faiss-gpu 설치
-numpy==1.24.3
+faiss-cpu==1.10.0              # GPU 사용 시 faiss-gpu 설치
+numpy==1.26.4                  # 고성능의 수치계산(벡터 및 행렬 연산)
 
 # 유틸리티
-tqdm==4.65.0           # 진행률 표시
-python-dotenv==1.0.0   # 환경 변수 관리
+tqdm==4.65.0                   # 진행률 표시
+python-dotenv==1.0.0           # 환경 변수 관리
 
 # ML 관련 라이브러리
-huggingface_hub==0.12.0
-sentence-transformers==2.2.2
+huggingface_hub==0.30.2        # 모델, 데이터셋, 파일 다운로드 및 관리
+sentence-transformers==4.1.0   # 문장, 문단, 이미지 등 다양한 입력을 임베딩(고차원 벡터)으로 변환
+torch==2.6.0                   # 딥러닝 모델 실행, GPU 가속 지원, 텐서 연산, 자동 미분, 유연한 구조

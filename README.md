@@ -82,10 +82,10 @@ deactivate
 ```bash
 # 가상환경 활성화 후
 # lifesub-web 프로젝트 파편화
-python lifesubweb-fragmentor.py --project /path/to/lifesub-web
+python lifesubweb-fragmentor.py --project ../lifesub-web
 
 # 데이터 디렉토리 지정 (기본값: ./data)
-python lifesubweb-fragmentor.py --project /path/to/lifesub-web --data-dir ./custom-data-dir
+python lifesubweb-fragmentor.py --project ../lifesub-web --data-dir ./custom-data-dir
 ```
 
 #### 2. 코드 검색
