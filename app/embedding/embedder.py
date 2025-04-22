@@ -23,7 +23,7 @@ class CodeEmbedder:
         self._model_name = model_name
         
         # 모델 초기화
-        self.model = SentenceTransformer(model_name)
+        self.model = SentenceTransformer(model_name, trust_remote_code=True)
         self._vector_dim = self.model.get_sentence_embedding_dimension()
         
         # 캐시 디렉토리 설정
