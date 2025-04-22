@@ -1,5 +1,5 @@
 """
-향상된 Faiss 벡터 저장소 모듈 - lifesub-web 프로젝트용
+Faiss 벡터 저장소 모듈
 """
 
 import os
@@ -18,7 +18,7 @@ class FaissVectorStore:
                  dimension: int, 
                  index_type: str = 'Cosine',
                  data_dir: str = './data',
-                 index_name: str = 'lifesub_web_fragments'):
+                 index_name: str = 'vue_todo_fragments'):
         """
         Args:
             dimension: 벡터 차원 수
@@ -79,25 +79,19 @@ class FaissVectorStore:
     def _load_index(self):
         """기존 인덱스 및 메타데이터 로드"""
         try:
+            # Faiss 인덱스 로드
             self.index = faiss.read_index(self.index_path)
             
+            # ID 매핑 로드
             with open(self.id_map_path, 'rb') as f:
                 data = pickle.load(f)
                 self.id_to_idx = data.get('id_to_idx', {})
                 self.idx_to_id = data.get('idx_to_id', {})
             
-            # 메타데이터는 별도 JSON 파일에서 로드
+            # 메타데이터 JSON 파일에서 로드
             if os.path.exists(self.metadata_path):
                 with open(self.metadata_path, 'r', encoding='utf-8') as f:
                     self.fragment_metadata = json.load(f)
-            else:
-                # 이전 버전 호환성을 위한 처리
-                with open(self.id_map_path, 'rb') as f:
-                    data = pickle.load(f)
-                    self.fragment_metadata = data.get('fragment_metadata', {})
-                
-                # 메타데이터 분리 저장
-                self._save_metadata()
                 
             print(f"Faiss 인덱스 로드 완료 (벡터 수: {self.index.ntotal})")
             
@@ -213,18 +207,11 @@ class FaissVectorStore:
         # 타입별 추가 메타데이터
         if fragment['type'] == 'component':
             metadata.update({
-                'component_type': fragment['metadata'].get('component_type', ''),
+                'component_name': fragment['metadata'].get('component_name', ''),
                 'props': fragment['metadata'].get('props', [])[:5],
-                'purpose': fragment['metadata'].get('purpose', '')
+                'components': fragment['metadata'].get('components', [])[:5]
             })
-        elif fragment['type'] == 'api_call':
-            metadata.update({
-                'api_service': fragment['metadata'].get('api_service', ''),
-                'http_method': fragment['metadata'].get('http_method', '')
-            })
-        elif fragment['type'] == 'mui_component':
-            metadata['component_library'] = 'material-ui'
-            
+        
         return metadata
     
     def search(self, query_vector: np.ndarray, k: int = 10, filters: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
@@ -271,9 +258,15 @@ class FaissVectorStore:
             if filters and not self._apply_filters(metadata, filters):
                 continue
                 
+            # IP 유사도는 높을수록 좋고, L2 거리는 낮을수록 좋음
+            # 따라서 거리를 점수로 변환 (L2 거리인 경우 음수로 변환)
+            score = distances[0][i]
+            if self.index_type == 'L2':
+                score = -score
+                
             results.append({
                 'id': fragment_id,
-                'score': float(distances[0][i]),
+                'score': float(score),
                 'type': metadata.get('type', ''),
                 'name': metadata.get('name', ''),
                 'file_path': metadata.get('file_path', ''),
@@ -324,9 +317,7 @@ class FaissVectorStore:
         """
         type_counts = {}
         file_counts = set()  # 중복 없이 파일 경로 저장하기 위해 set 사용
-        component_types = {}
-        categories = {}
-        purposes = {}
+        component_names = set()
         
         for fragment_id, metadata in self.fragment_metadata.items():
             # 타입별 카운트
@@ -339,54 +330,22 @@ class FaissVectorStore:
             # 파일별 카운트
             file_path = metadata.get('file_path', '')
             if file_path:
-                file_counts.add(file_path)  # set에 추가하여 중복 제거
-                    
-            # 컴포넌트 타입별 카운트
+                file_counts.add(file_path)
+                
+            # 컴포넌트별 카운트
             if frag_type == 'component':
-                comp_type = metadata.get('component_type', 'unknown')
-                if comp_type in component_types:
-                    component_types[comp_type] += 1
-                else:
-                    component_types[comp_type] = 1
-                    
-                # 목적별 카운트
-                purpose = metadata.get('purpose', 'unknown')
-                if purpose in purposes:
-                    purposes[purpose] += 1
-                else:
-                    purposes[purpose] = 1
-                    
-            # 카테고리별 카운트
-            category = self._extract_category_from_path(file_path)
-            if category:
-                if category in categories:
-                    categories[category] += 1
-                else:
-                    categories[category] = 1
+                component_name = metadata.get('component_name', '')
+                if component_name:
+                    component_names.add(component_name)
         
         return {
             'vector_count': self.index.ntotal,
             'dimension': self.dimension,
             'index_type': self.index_type,
             'fragment_types': type_counts,
-            'component_types': component_types,
-            'categories': categories,
-            'purposes': purposes,
-            'file_counts': len(file_counts)  # 고유한 파일 수 반환
+            'file_counts': len(file_counts),
+            'component_count': len(component_names)
         }
-    
-    def _extract_category_from_path(self, file_path: str) -> Optional[str]:
-        """파일 경로에서 카테고리 추출"""
-        if not file_path:
-            return None
-            
-        parts = file_path.split(os.path.sep)
-        if 'src' in parts:
-            src_idx = parts.index('src')
-            if len(parts) > src_idx + 1:
-                return parts[src_idx + 1]
-                
-        return None
     
     def get_fragments_by_file(self, file_path: str) -> List[Dict[str, Any]]:
         """

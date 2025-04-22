@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """
-React 프로젝트 파편화 POC 스크립트
+Vue Todo 애플리케이션 파편화 스크립트
 """
 
 import os
@@ -8,12 +8,13 @@ import sys
 import argparse
 import time
 from typing import Dict, List, Any
+import json
 
 # 상대 경로 import를 위한 경로 추가
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from app.parser.jsx_parser import parse_react_project
-from app.fragmenter.fragmenter import ReactFragmenter
+from app.parser.vue_parser import parse_vue_project
+from app.fragmenter.fragmenter import VueFragmenter
 from app.embedding.embedder import CodeEmbedder
 from app.storage.faiss_store import FaissVectorStore
 
@@ -30,17 +31,17 @@ def setup_directories(base_dir: str = './data'):
     
     return base_dir
 
-def process_lifesub_web(project_path: str, data_dir: str = './data'):
+def process_vue_todo(project_path: str, data_dir: str = './data'):
     """
-    lifesub-web 프로젝트 처리 파이프라인:
+    Vue Todo 프로젝트 처리 파이프라인:
     파싱 -> 파편화 -> 임베딩 -> 벡터 저장
     
     Args:
-        project_path: lifesub-web 프로젝트 디렉토리 경로
+        project_path: Vue Todo 프로젝트 디렉토리 경로
         data_dir: 데이터 저장 디렉토리
     """
     print(f"\n{'='*60}")
-    print(f" lifesub-web 프로젝트 파편화 및 벡터화 시작: {project_path}")
+    print(f" Vue Todo 프로젝트 파편화 및 벡터화 시작: {project_path}")
     print(f"{'='*60}\n")
     
     start_time = time.time()
@@ -51,7 +52,7 @@ def process_lifesub_web(project_path: str, data_dir: str = './data'):
     
     # 2. 프로젝트 파싱
     print("\n[1/4] 프로젝트 파싱 중...")
-    parsed_project = parse_react_project(project_path)
+    parsed_project = parse_vue_project(project_path)
     
     parsed_files_count = len(parsed_project['parsed_files'])
     print(f"  - 파싱된 파일: {parsed_files_count}개")
@@ -60,7 +61,7 @@ def process_lifesub_web(project_path: str, data_dir: str = './data'):
     
     # 3. 코드 파편화
     print("\n[2/4] 코드 파편화 중...")
-    fragmenter = ReactFragmenter()
+    fragmenter = VueFragmenter()
     fragmentation_result = fragmenter.fragment_project(parsed_project)
     
     fragments = fragmentation_result['fragments']
@@ -87,7 +88,7 @@ def process_lifesub_web(project_path: str, data_dir: str = './data'):
         dimension=embedder.vector_dim,
         index_type='Cosine',  # 코사인 유사도 사용
         data_dir=data_dir,
-        index_name='lifesub_web_fragments'
+        index_name='vue_todo_fragments'
     )
     
     vector_store.add_fragments(fragments, embeddings)
@@ -103,7 +104,7 @@ def process_lifesub_web(project_path: str, data_dir: str = './data'):
     print(f"  - 벡터 차원: {stats['dimension']}")
     print(f"  - 인덱스 타입: {stats['index_type']}")
     
-    # 타입 오류 수정: file_counts가 길이를 취할 수 없는 정수일 경우 대응
+    # 파일 수 출력
     if isinstance(stats['file_counts'], int):
         print(f"  - 처리된 파일 수: {stats['file_counts']}")
     else:
@@ -120,7 +121,7 @@ def process_lifesub_web(project_path: str, data_dir: str = './data'):
         'stats': stats
     }
 
-def search_lifesub_code(vector_store: FaissVectorStore, query: str, embedder: CodeEmbedder, k: int = 5):
+def search_vue_code(vector_store: FaissVectorStore, query: str, embedder: CodeEmbedder, k: int = 5):
     """
     쿼리 텍스트를 이용해 유사한 코드 파편 검색
     
@@ -168,7 +169,7 @@ def run_interactive_search(vector_store: FaissVectorStore, embedder: CodeEmbedde
         if not query:
             continue
             
-        search_lifesub_code(vector_store, query, embedder, k=5)
+        search_vue_code(vector_store, query, embedder, k=5)
 
 def load_preexisting_index(data_dir: str):
     """
@@ -182,7 +183,7 @@ def load_preexisting_index(data_dir: str):
     """
     try:
         # Faiss 인덱스 파일 경로
-        index_path = os.path.join(data_dir, 'faiss', 'lifesub_web_fragments.index')
+        index_path = os.path.join(data_dir, 'faiss', 'vue_todo_fragments.index')
         if not os.path.exists(index_path):
             return None
             
@@ -194,7 +195,7 @@ def load_preexisting_index(data_dir: str):
             dimension=embedder.vector_dim,
             index_type='Cosine',
             data_dir=data_dir,
-            index_name='lifesub_web_fragments'
+            index_name='vue_todo_fragments'
         )
         
         if vector_store.index.ntotal > 0:
@@ -208,8 +209,8 @@ def load_preexisting_index(data_dir: str):
 
 def main():
     """메인 함수"""
-    parser = argparse.ArgumentParser(description='lifesub-web 코드 파편화 및 벡터화 POC')
-    parser.add_argument('--project', type=str, help='lifesub-web 프로젝트 디렉토리 경로')
+    parser = argparse.ArgumentParser(description='Vue Todo 코드 파편화 및 벡터화')
+    parser.add_argument('--project', type=str, help='Vue Todo 프로젝트 디렉토리 경로')
     parser.add_argument('--data-dir', type=str, default='./data', help='데이터 저장 디렉토리')
     parser.add_argument('--search', action='store_true', help='대화형 검색 모드 실행')
     parser.add_argument('--query', type=str, help='단일 검색 쿼리 실행')
@@ -227,7 +228,7 @@ def main():
             
             if args.query:
                 # 단일 쿼리 검색
-                search_lifesub_code(vector_store, args.query, embedder)
+                search_vue_code(vector_store, args.query, embedder)
             else:
                 # 대화형 검색
                 run_interactive_search(vector_store, embedder)
@@ -238,7 +239,7 @@ def main():
     
     # 프로젝트 경로가 필요한 경우
     if not args.project:
-        print("오류: --project 인자가 필요합니다. lifesub-web 프로젝트 경로를 지정하세요.")
+        print("오류: --project 인자가 필요합니다. Vue Todo 프로젝트 경로를 지정하세요.")
         return 1
         
     project_path = os.path.abspath(args.project)
@@ -257,7 +258,7 @@ def main():
             
             if args.query:
                 # 단일 쿼리 검색
-                search_lifesub_code(vector_store, args.query, embedder)
+                search_vue_code(vector_store, args.query, embedder)
             elif args.search:
                 # 대화형 검색
                 run_interactive_search(vector_store, embedder)
@@ -265,7 +266,7 @@ def main():
             return 0
     
     # 프로젝트 처리 (파싱, 파편화, 임베딩, 저장)
-    result = process_lifesub_web(project_path, data_dir)
+    result = process_vue_todo(project_path, data_dir)
     
     # 검색 모드
     if args.search or args.query:
@@ -274,7 +275,7 @@ def main():
         
         if args.query:
             # 단일 쿼리 검색
-            search_lifesub_code(vector_store, args.query, embedder)
+            search_vue_code(vector_store, args.query, embedder)
         else:
             # 대화형 검색
             run_interactive_search(vector_store, embedder)

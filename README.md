@@ -1,39 +1,30 @@
-# Backend-Fragmentor - lifesub-web 소스 코드 분석 및 파편화 POC
+# Vue Todo 파편화 및 벡터화 도구
 
-이 프로젝트는 Backend-Fragmentor 서비스의 POC(Proof of Concept)로, React 기반의 lifesub-web 애플리케이션 소스 코드를 의미 단위로 파편화하고 벡터화하여 효율적인 검색이 가능하도록 구현한 것입니다.
+이 프로젝트는 Vue Todo 애플리케이션의 소스 코드를 의미 단위로 파편화하고 벡터화하여 효율적인 검색이 가능하도록 구현한 것입니다.
 
 ## 개요
 
-이 POC는 Backend-Fragmentor 서비스의 핵심 기능을 검증하기 위한 것으로, 다음 기능을 제공합니다:
+이 도구는 다음과 같은 기능을 제공합니다:
 
-- **코드 파싱**: lifesub-web 프로젝트의 React 소스 코드를 파싱하여 AST(Abstract Syntax Tree) 분석
-- **의미 단위 파편화**: 컴포넌트, 함수, JSX 요소, API 호출 등을 의미 단위로 분절
+- **코드 파싱**: Vue 프로젝트의 SFC(Single File Component) 파일을 파싱하여 분석
+- **의미 단위 파편화**: 컴포넌트, 템플릿, 스크립트, 스타일 섹션을 의미 단위로 분절
 - **벡터 임베딩 생성**: 각 코드 파편에 대한 임베딩 벡터 생성
 - **벡터 저장소**: Faiss를 활용한 벡터 저장 및 효율적인 유사도 검색
 - **대화형 검색 인터페이스**: 코드 파편을 검색하고 탐색할 수 있는 CLI 도구
-
-본 POC는 최종적으로 Backend-Fragmentor 서비스로 발전하여, 레거시 프로젝트의 코드 분석 및 검색 기능을 제공할 예정입니다.
-
-## 파편화 프로세스 다이어그램
-
-아래는 lifesub-web 프로젝트의 소스 코드 파편화 및 벡터화 과정을 보여주는 다이어그램입니다:
-
-![lifesub-web 파편화 프로세스](fragmentor_process.mmd)
 
 ## 설치 및 실행
 
 ### 요구 사항
 
-- Python 3.11.1+ 이상
-- 필요한 패키지:
-  - requirements.txt 참고
+- Python 3.13.1+
+- 필요한 패키지는 requirements.txt 참고
 
 ### 설치
 
 ```bash
 # 저장소 클론
-git clone https://github.com/your-org/backend-fragmentor.git
-cd backend-fragmentor
+git clone https://github.com/your-org/vue-todo-fragmentor.git
+cd vue-todo-fragmentor
 
 # 가상환경 설정
 python -m venv venv
@@ -41,13 +32,9 @@ source venv/bin/activate  # Linux/Mac
 # 또는
 venv\Scripts\activate     # Windows
 
-# pip 버전 업그레이드 (25.0.1 버전 필요)
-pip install --upgrade pip==25.0.1
-
 # 의존성 설치
 pip install -r requirements.txt
 ```
-
 
 ### 실행 방법
 
@@ -55,11 +42,11 @@ pip install -r requirements.txt
 
 ```bash
 # 가상환경 활성화 후
-# lifesub-web 프로젝트 파편화
-python lifesubweb-fragmentor.py --project ../lifesub-web
+# Vue Todo 프로젝트 파편화
+python vuetodo-fragmentor.py --project /path/to/vue-todo
 
 # 데이터 디렉토리 지정 (기본값: ./data)
-python lifesubweb-fragmentor.py --project ../lifesub-web --data-dir ./custom-data-dir
+python vuetodo-fragmentor.py --project /path/to/vue-todo --data-dir ./custom-data-dir
 ```
 
 #### 2. 코드 검색
@@ -75,169 +62,44 @@ python search_ui.py --data-dir ./custom-data-dir
 
 ## 검색 쿼리 예시
 
-```bash
-# 특정 쿼리로 직접 검색
-python lifesubweb-fragmentor.py --project /path/to/lifesub-web --query "구독 서비스 목록 컴포넌트"
+대화형 검색 모드에서 사용할 수 있는 예시 명령어:
 
-# 대화형 검색 모드
-python lifesubweb-fragmentor.py --project /path/to/lifesub-web --search
-
-# 필터링을 적용한 검색 (대화형 UI 내에서)
-코드검색> search 구독 컴포넌트 --type=component
-코드검색> search API 호출 --type=api_call
 ```
-
-## 검색 UI 스크린샷
-
-대화형 코드 검색 인터페이스:
-
-![검색 UI 예시](search_ui_example.svg)
-
-## 사용 예시
-
-다음은 실제 실행 과정과 사용 예시입니다:
-
-```bash
-# 1. 가상환경 활성화
-source venv/bin/activate  # Linux/Mac
-# 또는
-venv\Scripts\activate     # Windows
-
-# 2. 파편화 및 벡터화 실행
-python lifesubweb-fragmentor.py --project ../lifesub-web --data-dir ./data
-
-================================================
- lifesub-web 프로젝트 파편화 및 벡터화 시작: ../lifesub-web
-================================================
-
-[1/4] 프로젝트 파싱 중...
-lifesub-web 프로젝트 파싱 중: ../lifesub-web
-처리 중... 10개 파일 완료
-처리 중... 20개 파일 완료
-처리 중... 30개 파일 완료
-  - 파싱된 파일: 31개
-  - 감지된 컴포넌트: 24개
-  - 파일 확장자 분포: {'.js': 28, '.jsx': 3}
-
-[2/4] 코드 파편화 중...
-  - 생성된 파편: 112개
-  - 파편 타입 분포: {'component': 24, 'function': 43, 'jsx_element': 21, 'import_block': 14, 'api_call': 8, 'routing': 2}
-  - 컴포넌트 타입 분포: {'functional': 22, 'arrow_function': 2}
-
-[3/4] 임베딩 생성 중...
-  - 모델: all-MiniLM-L6-v2
-  - 벡터 차원: 384
-100%|██████████| 4/4 [00:02<00:00,  1.47it/s]
-  - 생성된 임베딩: 112개
-
-[4/4] 벡터 저장소에 저장 중...
-112개 벡터 추가 완료 (현재 총 112개)
-
-================================================
- 처리 완료 (소요 시간: 12.34초)
-================================================
-  - 저장된 벡터: 112개
-  - 벡터 차원: 384
-  - 인덱스 타입: Cosine
-  - 파편 타입 분포: {'component': 24, 'function': 43, 'jsx_element': 21, 'import_block': 14, 'api_call': 8, 'routing': 2}
-  - 처리된 파일 수: 31
-
-# 3. 대화형 검색 UI 실행
-python search_ui.py --data-dir ./data
+코드검색> search 할일 목록 컴포넌트
+코드검색> search 템플릿 섹션 --type=template
+코드검색> view 2
+코드검색> similar
+코드검색> file src/components/TodoItem.vue
+코드검색> stats
 ```
-
-## 파편화 프로세스 상세
-
-### 1. 코드 파싱
-- JSX/JS 파일을 파싱하여 AST 생성
-- 컴포넌트, 훅, 함수 등의 의미 단위 식별
-- 파일 메타데이터 수집
-- lifesub-web 특화 정보(카테고리, 목적) 추출
-
-### 2. 코드 파편화
-- 다양한 단위로 코드 파편화:
-  - 컴포넌트 (함수형, 클래스, 메모)
-  - 커스텀 훅
-  - 내부 함수
-  - JSX 요소
-  - API 호출
-  - MUI 컴포넌트
-  - 라우팅 관련 코드
-  - Import 블록
-  - 상태 관리 로직
-
-### 3. 임베딩 생성
-- SentenceTransformer 모델을 사용하여 코드 파편의 벡터 임베딩 생성
-- 코드 내용과 함께 메타데이터 컨텍스트를 포함한 임베딩
-- lifesub-web 특화 키워드 및 개념 포함
-- 배치 처리 및 캐싱을 통한 성능 최적화
-
-### 4. 벡터 저장
-- Faiss를 이용한 벡터 인덱싱
-- 코사인 유사도를 통한 검색
-- 메타데이터와 매핑 정보 저장
-- 필터링 기능 지원
-
-### 5. 검색 인터페이스
-- 대화형 CLI 검색 도구
-- 컬러 하이라이팅된 결과 출력
-- 파편 상세 보기 및 유사 파편 탐색
-- 파일별, 타입별 필터링 옵션
 
 ## 프로젝트 구조
 
 ```
-backend-fragmentor/
-├── lifesubweb-fragmentor.py     # POC 메인 실행 스크립트
-├── search_ui.py                 # 검색 UI
-├── requirements.txt             # 의존성 패키지
-├── README.md                    # 프로젝트 개요
-├── Fragmentor-POC.md            # POC 설명 문서
-├── fragmentor_process.mmd       # 프로세스 다이어그램
-├── search_ui_example.svg        # 예시 이미지
-├── venv/                        # 가상환경 디렉토리
-└── app/                         # 핵심 모듈
-    ├── parser/                  # 코드 파서
-    │   └── jsx_parser.py        # 향상된 JSX 파서
-    ├── fragmenter/              # 파편화 모듈
-    │   └── fragmenter.py        # 파편화 엔진
-    ├── embedding/               # 임베딩 모듈
-    │   └── embedder.py          # 임베딩 생성기
-    ├── storage/                 # 벡터 저장소
-    │   └── faiss_store.py       # Faiss 벡터 저장소
-    └── main.py                  # 애플리케이션 진입점
-    └── __init__.py              # 버전 정보 제공
+vue-todo-fragmentor/
+├── vuetodo-fragmentor.py     # 파편화 및 벡터화 실행 스크립트
+├── search_ui.py              # 검색 UI
+├── requirements.txt          # 의존성 패키지
+├── README.md                 # 프로젝트 설명
+└── app/                      # 핵심 모듈
+    ├── parser/               # Vue 파서
+    │   └── vue_parser.py     # Vue SFC 파서
+    ├── fragmenter/           # 파편화 모듈
+    │   └── fragmenter.py     # 파편화 엔진
+    ├── embedding/            # 임베딩 모듈
+    │   └── embedder.py       # 임베딩 생성기
+    └── storage/              # 벡터 저장소
+        └── faiss_store.py    # Faiss 벡터 저장소
 ```
 
-## 확장 및 개선 방향
+## 파편화 프로세스
 
-### 향후 개발 방향
-1. **Backend-Fragmentor 서비스화** - POC에서 실제 서비스로 전환
-2. **FastAPI 기반 API 서비스** - 검색 및 관리 API 개발
-3. **다중 언어 지원** - Java, Python, TypeScript 등 추가 언어 지원
-4. **벡터 DB 고도화** - 더 효율적인 벡터 검색 및 저장 구현
-5. **웹 인터페이스** - 웹 기반 코드 검색 및 탐색 UI 개발
-
-### 파편화 성능 개선
-- 임베딩 생성 병렬 처리 최적화
-- 증분 업데이트 지원 (변경된 파일만 재처리)
-- 언어별 특화 파서 통합
-
-### 검색 기능 확장
-- 자연어 코드 변환 검색
-- 유사 코드 클러스터링
-- 코드 관계 시각화
-- 복잡한 쿼리 구문 지원
+1. **코드 파싱**: Vue SFC 파일을 파싱하여 템플릿, 스크립트, 스타일 섹션 분리
+2. **파편화**: 각 파일을 컴포넌트, 템플릿, 스크립트, 스타일 단위로 파편화
+3. **임베딩 생성**: SentenceTransformer 모델을 사용하여 각 파편의 임베딩 벡터 생성
+4. **벡터 저장**: 생성된 임베딩을 Faiss 인덱스에 저장하고 메타데이터 관리
 
 ## 주의사항
 
-- 현재 이 코드는 POC 단계로, 프로덕션 환경에서의 사용은 권장하지 않습니다.
-- 데이터 디렉토리에 생성되는 인덱스 및 캐시 파일은 상당한 용량을 차지할 수 있으니 `.gitignore`에 추가하여 관리하세요.
-- SentenceTransformer와 Faiss를 사용하므로 충분한 메모리가 필요합니다.
-- 가상환경 디렉토리(venv/)는 Git에 포함시키지 말고 `.gitignore`에 추가하세요.
-- 특정 버전의 pip(25.0.1)이 필요하므로 가상환경 활성화 후 첫 번째로 pip를 업그레이드하세요.
-- 환경 구성 시 발생하는 dependency 충돌 문제는 `pip install --no-deps <package>` 옵션을 사용하여 해결할 수 있습니다.
-
-## 라이선스
-
-이 프로젝트는 내부 사용 목적으로 개발되었습니다.
+- 현재 구현은 Vue SFC 파일에 대한 기본적인 파편화만 지원합니다.
+- 향후 더 세부적인 파편화(메서드, 함수 단위 등)로 확장할 예정입니다.

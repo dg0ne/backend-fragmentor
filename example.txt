@@ -1,0 +1,75 @@
+질문
+자세한 통계 보기를 누르면 오류가 나는데 어떻게 고쳐?
+
+
+
+해결 방법
+TodoStats 컴포넌트의 주요 문제점을 분석해보니, Chart.js 관련 초기화 문제가 가장 가능성이 높습니다. 다음과 같이 수정하세요:
+
+
+소스 파편
+TodoStats.vue 파일에서 mounted 생명주기 훅 수정:
+
+기존
+    async mounted() {
+      try {
+        await this.$store.dispatch('todos/fetchTodos')
+        this.renderCharts()
+      } catch (error) {
+        this.error = error.message
+      } finally {
+        this.isLoading = false
+      }
+    },
+	
+	
+변경
+
+
+async mounted() {
+  this.isLoading = true;
+  try {
+    await this.$store.dispatch('todos/fetchTodos');
+    
+    // 데이터가 있을 때만 차트 렌더링 시도
+    if (this.todos.length > 0) {
+      this.$nextTick(() => {
+        this.renderCharts();
+      });
+    }
+  } catch (error) {
+    this.error = error.message;
+    console.error('차트 로딩 중 오류:', error);
+  } finally {
+    this.isLoading = false;
+  }
+}
+
+
+
+
+
+
+예시 1:
+질문: "할일을 완료 처리했는데 완료됨으로 표시되지 않습니다. 어디를 수정해야 하나요?"
+파편화 타겟: TodoItem.vue와 todos.js 스토어 모듈 (체크박스 상태 변경과 상태 업데이트 로직)
+
+예시 2:
+질문: "다크 모드로 전환이 안 됩니다. 어떤 부분을 확인해야 할까요?"
+파편화 타겟: Settings.vue, store/index.js의 테마 관련 액션, main.css의 다크모드 스타일
+
+예시 3:
+질문: "우선순위별로 할일이 제대로 필터링되지 않아요. 필터 기능은 어디에 있나요?"
+파편화 타겟: TodoFilter.vue, TodoListComponent.vue의 필터링 로직
+
+예시 4:
+질문: "할일 생성 후 목록 페이지로 자동 이동하지 않습니다. 어떻게 해결할 수 있을까요?"
+파편화 타겟: TodoForm.vue의 handleSubmit 메소드와 라우팅 코드
+
+예시 5:
+질문: "카테고리 관리에서 카테고리 삭제 시 관련 할일들도 함께 삭제되나요? 이 기능은 어디에 구현되어 있나요?"
+파편화 타겟: categories.js 스토어 모듈의 removeCategory 액션
+
+예시 6:
+질문: "할일 목록에서 마감일 지난 항목을 강조 표시하는 기능이 어떻게 구현되어 있나요?"
+파편화 타겟: TodoItem.vue의 isOverdue 계산된 속성과 관련 스타일링

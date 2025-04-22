@@ -1,5 +1,5 @@
 """
-lifesub-web 코드 검색 UI
+Vue Todo 코드 검색 UI
 """
 
 import os
@@ -15,8 +15,8 @@ from colorama import Fore, Style
 # 상대 경로 import를 위한 경로 추가
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from app.parser.jsx_parser import EnhancedJSXParser, parse_react_project
-from app.fragmenter.fragmenter import ReactFragmenter
+from app.parser.vue_parser import parse_vue_project
+from app.fragmenter.fragmenter import VueFragmenter
 from app.embedding.embedder import CodeEmbedder
 from app.storage.faiss_store import FaissVectorStore
 
@@ -26,7 +26,7 @@ colorama.init()
 class CodeSearchShell(cmd.Cmd):
     """대화형 코드 검색 인터페이스"""
     
-    intro = f"{Fore.CYAN}lifesub-web 코드 검색 쉘에 오신 것을 환영합니다. 도움말을 보려면 'help'를 입력하세요.{Style.RESET_ALL}"
+    intro = f"{Fore.CYAN}Vue Todo 코드 검색 쉘에 오신 것을 환영합니다. 도움말을 보려면 'help'를 입력하세요.{Style.RESET_ALL}"
     prompt = f"{Fore.GREEN}코드검색> {Style.RESET_ALL}"
     
     def __init__(self, vector_store: FaissVectorStore, embedder: CodeEmbedder):
@@ -38,8 +38,8 @@ class CodeSearchShell(cmd.Cmd):
     
     def do_search(self, arg):
         """검색 쿼리를 입력하여 코드 파편 검색. 
-        예: search 구독 서비스 리스트 컴포넌트
-        필터링: search 로그인 처리 --type=function"""
+        예: search 할일 목록 컴포넌트
+        필터링: search 로그인 처리 --type=component"""
         
         if not arg:
             print(f"{Fore.YELLOW}검색어를 입력하세요.{Style.RESET_ALL}")
@@ -64,7 +64,7 @@ class CodeSearchShell(cmd.Cmd):
         elapsed_time = time.time() - start_time
         
         if not results:
-            print(f"{Fore.YELLOW}검색 결과가,  없습니다.{Style.RESET_ALL}")
+            print(f"{Fore.YELLOW}검색 결과가 없습니다.{Style.RESET_ALL}")
             return
             
         # 결과 저장
@@ -108,12 +108,6 @@ class CodeSearchShell(cmd.Cmd):
                     props = metadata.get('props', [])
                     if props:
                         print(f"Props: {', '.join(props)}")
-                    purpose = metadata.get('purpose', '')
-                    if purpose:
-                        print(f"목적: {purpose}")
-                elif result['type'] == 'api_call':
-                    print(f"API 서비스: {metadata.get('api_service', '')}")
-                    print(f"HTTP 메서드: {metadata.get('http_method', '')}")
                 
                 # 코드 콘텐츠
                 if 'content_preview' in result:
@@ -165,25 +159,10 @@ class CodeSearchShell(cmd.Cmd):
         print(f"\n{Fore.GREEN}파편 타입별 분포:{Style.RESET_ALL}")
         for type_name, count in stats['fragment_types'].items():
             print(f"  {type_name}: {count}개")
-        
-        if 'component_types' in stats:
-            print(f"\n{Fore.GREEN}컴포넌트 타입별 분포:{Style.RESET_ALL}")
-            for comp_type, count in stats['component_types'].items():
-                print(f"  {comp_type}: {count}개")
-        
-        if 'categories' in stats:
-            print(f"\n{Fore.GREEN}카테고리별 분포:{Style.RESET_ALL}")
-            for category, count in stats['categories'].items():
-                print(f"  {category}: {count}개")
-        
-        if 'purposes' in stats:
-            print(f"\n{Fore.GREEN}목적별 분포:{Style.RESET_ALL}")
-            for purpose, count in stats['purposes'].items():
-                print(f"  {purpose}: {count}개")
     
     def do_file(self, arg):
         """특정 파일의 모든 파편 조회.
-        예: file src/components/common/LoadingSpinner.js"""
+        예: file src/components/TodoItem.vue"""
         
         if not arg:
             print(f"{Fore.YELLOW}파일 경로를 입력하세요.{Style.RESET_ALL}")
@@ -211,7 +190,7 @@ class CodeSearchShell(cmd.Cmd):
     
     def do_exit(self, arg):
         """검색 쉘 종료"""
-        print(f"{Fore.CYAN}lifesub-web 코드 검색을 종료합니다.{Style.RESET_ALL}")
+        print(f"{Fore.CYAN}Vue Todo 코드 검색을 종료합니다.{Style.RESET_ALL}")
         return True
         
     def do_quit(self, arg):
@@ -244,11 +223,11 @@ def run_search_ui(data_dir: str = './data'):
             dimension=embedder.vector_dim,
             index_type='Cosine',
             data_dir=data_dir,
-            index_name='lifesub_web_fragments'
+            index_name='vue_todo_fragments'
         )
         
         if vector_store.index.ntotal == 0:
-            print(f"{Fore.RED}오류: 인덱스가 비어 있습니다. 먼저 lifesub_fragmentor.py를 실행하여 인덱스를 생성하세요.{Style.RESET_ALL}")
+            print(f"{Fore.RED}오류: 인덱스가 비어 있습니다. 먼저 vuetodo-fragmentor.py를 실행하여 인덱스를 생성하세요.{Style.RESET_ALL}")
             return
             
         # 검색 UI 실행
@@ -259,7 +238,7 @@ def run_search_ui(data_dir: str = './data'):
         print(f"{Fore.RED}오류 발생: {str(e)}{Style.RESET_ALL}")
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='lifesub-web 코드 검색 UI')
+    parser = argparse.ArgumentParser(description='Vue Todo 코드 검색 UI')
     parser.add_argument('--data-dir', type=str, default='./data', help='데이터 저장 디렉토리')
     
     args = parser.parse_args()

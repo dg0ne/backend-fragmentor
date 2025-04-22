@@ -2,10 +2,6 @@
 # 필수 빌드 도구
 wheel>=0.41.2
 
-# 코드 파싱
-esprima==4.0.1                 # JavaScript/JSX 파싱
-pyjsparser==2.7.1              # JS 파서
-
 # 벡터 저장
 faiss-cpu==1.10.0              # GPU 사용 시 faiss-gpu 설치
 numpy==1.26.4                  # 고성능의 수치계산(벡터 및 행렬 연산)
@@ -13,6 +9,9 @@ numpy==1.26.4                  # 고성능의 수치계산(벡터 및 행렬 연
 # 유틸리티
 tqdm==4.65.0                   # 진행률 표시
 python-dotenv==1.0.0           # 환경 변수 관리
+colorama==0.4.6                # 터미널 컬러 출력
+uuid==1.30                     # UUID 생성
+regex==2023.10.3               # 정규식 확장 기능
 
 # ML 관련 라이브러리
 huggingface_hub==0.30.2        # 모델, 데이터셋, 파일 다운로드 및 관리
