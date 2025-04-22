@@ -58,15 +58,30 @@ class CodeSearchShell(cmd.Cmd):
         # 쿼리 임베딩 생성
         query_embedding = self.embedder.model.encode(query, normalize_embeddings=True)
         
+        # 앙상블 검색을 위해 원본 쿼리 텍스트도 필터에 추가
+        filters['query_text'] = query
+        
+        # 앙상블 가중치 설정 (기본값 0.5)
+        if 'weight' in filters:
+            try:
+                filters['ensemble_weight'] = float(filters.pop('weight'))
+            except (ValueError, TypeError):
+                pass
+        
         # 검색 실행
         start_time = time.time()
-        results = self.vector_store.search(query_embedding, k=5, filters=filters if filters else None)
+        results = self.vector_store.search(
+            query_vector=query_embedding,
+            k=5, 
+            filters=filters if filters else None
+        )
+
         elapsed_time = time.time() - start_time
         
         if not results:
             print(f"{Fore.YELLOW}검색 결과가 없습니다.{Style.RESET_ALL}")
             return
-            
+                
         # 결과 저장
         self.last_results = results
         
@@ -78,7 +93,8 @@ class CodeSearchShell(cmd.Cmd):
             print(f"\n{Fore.GREEN}[{i+1}] {result['name']} ({result['type']}){Style.RESET_ALL} - 유사도: {result['score']:.4f}")
             print(f"  파일: {Fore.BLUE}{result['file_name']}{Style.RESET_ALL}")
             print(f"  {Fore.YELLOW}{result['content_preview']}{Style.RESET_ALL}")
-    
+
+
     def do_view(self, arg):
         """검색 결과 항목 자세히 보기. 
         예: view 2"""
