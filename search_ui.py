@@ -223,6 +223,38 @@ class CodeSearchShell(cmd.Cmd):
             print(f"{Fore.YELLOW}알 수 없는 명령어: {line}{Style.RESET_ALL}")
             print(f"도움말을 보려면 'help'를 입력하세요.")
 
+    def do_component(self, arg):
+        """컴포넌트 타입만 검색하는 명령어.
+        예: component 할일 목록"""
+        
+        if not arg:
+            print(f"{Fore.YELLOW}검색어를 입력하세요.{Style.RESET_ALL}")
+            return
+        
+        # 검색어와 필터 함께 적용하여 search 호출
+        query = arg.strip()
+        self.do_search(f"{query} --type=component")
+
+    def do_template(self, arg):
+        """템플릿 섹션만 검색하는 명령어.
+        예: template 할일 목록"""
+        
+        if not arg:
+            print(f"{Fore.YELLOW}검색어를 입력하세요.{Style.RESET_ALL}")
+            return
+        
+        self.do_search(f"{arg} --type=template")
+
+    def do_script(self, arg):
+        """스크립트 섹션만 검색하는 명령어.
+        예: script 할일 목록"""
+        
+        if not arg:
+            print(f"{Fore.YELLOW}검색어를 입력하세요.{Style.RESET_ALL}")
+            return
+        
+        self.do_search(f"{arg} --type=script")
+
 def run_search_ui(data_dir: str = './data'):
     """
     코드 검색 UI 실행
