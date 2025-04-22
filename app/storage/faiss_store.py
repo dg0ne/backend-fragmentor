@@ -214,21 +214,77 @@ class FaissVectorStore:
         
         return metadata
     
-    def search(self, query_vector: np.ndarray, k: int = 5, filters: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
+    def _keyword_search(self, query: str, k: int = 20) -> List[Dict[str, Any]]:
         """
-        쿼리 벡터와 유사한 코드 파편 검색 (필터링 지원)
+        키워드 기반 검색 구현
         
         Args:
-            query_vector: 쿼리 벡터
+            query: 검색 쿼리 문자열
             k: 반환할 결과 수
-            filters: 필터링 조건 (예: {'type': 'component'})
             
         Returns:
-            List[Dict]: 검색 결과 목록
+            List[Dict]: 키워드 검색 결과
         """
-        if self.index.ntotal == 0:
-            return []
+        # 쿼리 단어 분리
+        query_terms = query.lower().split()
+        
+        # 결과 저장용 딕셔너리
+        scores = {}
+        
+        for fragment_id, metadata in self.fragment_metadata.items():
+            content = metadata.get('content_preview', '').lower()
+            fragment_type = metadata.get('type', '')
             
+            # 기본 점수
+            score = 0
+            
+            # 쿼리 텀별 매칭 확인
+            for term in query_terms:
+                # 정확한 단어 매칭에 가중치 부여
+                if term in content.split():
+                    score += 3.0
+                # 부분 문자열 매칭
+                elif term in content:
+                    score += 1.0
+            
+            # 타입별 가중치 부여 (컴포넌트에 우선순위)
+            if fragment_type == 'component':
+                score *= 1.5
+            elif fragment_type == 'template':
+                score *= 1.2
+            
+            if score > 0:
+                scores[fragment_id] = score
+        
+        # 점수 기준 상위 결과 정렬
+        sorted_results = sorted(
+            [(fragment_id, score) for fragment_id, score in scores.items()],
+            key=lambda x: x[1],
+            reverse=True
+        )[:k]
+        
+        # 결과 포맷팅
+        results = []
+        for fragment_id, score in sorted_results:
+            metadata = self.fragment_metadata.get(fragment_id, {})
+            results.append({
+                'id': fragment_id,
+                'score': float(score),
+                'type': metadata.get('type', ''),
+                'name': metadata.get('name', ''),
+                'file_path': metadata.get('file_path', ''),
+                'file_name': metadata.get('file_name', ''),
+                'content_preview': metadata.get('content_preview', '')
+            })
+        
+        return results
+
+    # 벡터 검색을 수행하는 내부 메서드
+    def _vector_search(self, query_vector: np.ndarray, k: int = 5, 
+                    filters: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
+        """
+        벡터 유사도 기반 검색 수행
+        """
         # 코사인 유사도를 위한 정규화 (필요 시)
         if self.index_type == 'Cosine':
             query_vector = query_vector / np.linalg.norm(query_vector)
@@ -279,7 +335,186 @@ class FaissVectorStore:
                 break
                 
         return results
+
+    def _ensemble_results(self, vector_results: List[Dict], keyword_results: List[Dict], 
+                        k: int = 5, weight: float = 0.5) -> List[Dict]:
+        """
+        벡터 검색과 키워드 검색 결과를 결합
+        
+        Args:
+            vector_results: 벡터 검색 결과
+            keyword_results: 키워드 검색 결과
+            k: 반환할 결과 수
+            weight: 벡터 검색 가중치 (0~1)
+            
+        Returns:
+            List[Dict]: 결합된 검색 결과
+        """
+        # 결과 ID를 키로, 점수를 값으로 하는 딕셔너리 생성
+        vector_scores = {r['id']: r['score'] for r in vector_results}
+        keyword_scores = {r['id']: r['score'] for r in keyword_results}
+        
+        # 모든 고유 파편 ID 수집
+        all_ids = set(vector_scores.keys()) | set(keyword_scores.keys())
+        
+        # 점수 정규화를 위한 최대값
+        max_vector_score = max(vector_scores.values()) if vector_scores else 1.0
+        max_keyword_score = max(keyword_scores.values()) if keyword_scores else 1.0
+        
+        # 결합 점수 계산
+        ensemble_scores = {}
+        for fragment_id in all_ids:
+            # 정규화된 벡터 점수 (없으면 0)
+            norm_vector_score = vector_scores.get(fragment_id, 0) / max_vector_score
+            
+            # 정규화된 키워드 점수 (없으면 0)
+            norm_keyword_score = keyword_scores.get(fragment_id, 0) / max_keyword_score
+            
+            # 가중 결합 점수 계산
+            ensemble_scores[fragment_id] = (
+                weight * norm_vector_score + (1 - weight) * norm_keyword_score
+            )
+        
+        # 결합 점수 기준 정렬
+        sorted_results = sorted(
+            [(fragment_id, score) for fragment_id, score in ensemble_scores.items()],
+            key=lambda x: x[1],
+            reverse=True
+        )[:k]
+        
+        # 결과 포맷팅
+        results = []
+        for fragment_id, score in sorted_results:
+            # 원본 결과에서 메타데이터 가져오기
+            for r in vector_results + keyword_results:
+                if r['id'] == fragment_id:
+                    result = r.copy()
+                    result['score'] = float(score)  # 앙상블 점수로 업데이트
+                    results.append(result)
+                    break
+                    
+            # 이미 찾았으면 다음 ID로
+            if len(results) == len(sorted_results[:len(results)]):
+                continue
+                
+            # 원본 결과에 없는 경우 메타데이터에서 직접 가져오기
+            metadata = self.fragment_metadata.get(fragment_id, {})
+            if metadata:
+                results.append({
+                    'id': fragment_id,
+                    'score': float(score),
+                    'type': metadata.get('type', ''),
+                    'name': metadata.get('name', ''),
+                    'file_path': metadata.get('file_path', ''),
+                    'file_name': metadata.get('file_name', ''),
+                    'content_preview': metadata.get('content_preview', '')
+                })
+        
+        return results
     
+    def search(self, query_vector: np.ndarray, k: int = 5, 
+            filters: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
+        """
+        쿼리 벡터와 유사한 코드 파편 검색 (앙상블 검색 적용)
+        
+        Args:
+            query_vector: 쿼리 벡터
+            k: 반환할 결과 수
+            filters: 필터링 조건 (예: {'type': 'component'})
+            
+        Returns:
+            List[Dict]: 검색 결과 목록
+        """
+        if self.index.ntotal == 0:
+            return []
+        
+        # filters에서 앙상블 관련 옵션 추출
+        ensemble_weight = 0.5  # 기본값
+        query_text = None
+        
+        if filters and 'query_text' in filters:
+            query_text = filters.pop('query_text')
+        
+        if filters and 'ensemble_weight' in filters:
+            try:
+                ensemble_weight = float(filters.pop('ensemble_weight'))
+            except (ValueError, TypeError):
+                pass
+        
+        # 벡터 검색 수행 
+        vector_results = self._vector_search(query_vector, k=k*2, filters=filters)
+        
+        # 키워드 검색 수행 (query_text가 있는 경우만)
+        keyword_results = []
+        if query_text:
+            keyword_results = self._keyword_search(query_text, k=k*2)
+            
+            # 앙상블 검색 (벡터 + 키워드 결합)
+            if keyword_results:
+                # 결과 결합을 위한 딕셔너리
+                vector_scores = {r['id']: r['score'] for r in vector_results}
+                keyword_scores = {r['id']: r['score'] for r in keyword_results}
+                
+                # 모든 고유 파편 ID 수집
+                all_ids = set(vector_scores.keys()) | set(keyword_scores.keys())
+                
+                # 점수 정규화를 위한 최대값
+                max_vector_score = max(vector_scores.values()) if vector_scores else 1.0
+                max_keyword_score = max(keyword_scores.values()) if keyword_scores else 1.0
+                
+                # 결합 점수 계산
+                combined_scores = {}
+                for fragment_id in all_ids:
+                    # 정규화된 벡터 점수 (없으면 0)
+                    norm_vector_score = vector_scores.get(fragment_id, 0) / max_vector_score
+                    
+                    # 정규화된 키워드 점수 (없으면 0)
+                    norm_keyword_score = keyword_scores.get(fragment_id, 0) / max_keyword_score
+                    
+                    # 가중 결합 점수 계산
+                    combined_scores[fragment_id] = (
+                        ensemble_weight * norm_vector_score + 
+                        (1 - ensemble_weight) * norm_keyword_score
+                    )
+                
+                # 결합 점수 기준 정렬
+                sorted_ids = sorted(
+                    combined_scores.items(),
+                    key=lambda x: x[1],
+                    reverse=True
+                )[:k]
+                
+                # 결과 포맷팅
+                combined_results = []
+                for fragment_id, score in sorted_ids:
+                    # 기존 결과에서 세부 정보 찾기
+                    result_info = None
+                    for r in vector_results + keyword_results:
+                        if r['id'] == fragment_id:
+                            result_info = r.copy()
+                            result_info['score'] = float(score)  # 앙상블 점수로 업데이트
+                            break
+                    
+                    # 결과 정보가 없으면 메타데이터에서 직접 가져오기
+                    if not result_info:
+                        metadata = self.fragment_metadata.get(fragment_id, {})
+                        result_info = {
+                            'id': fragment_id,
+                            'score': float(score),
+                            'type': metadata.get('type', ''),
+                            'name': metadata.get('name', ''),
+                            'file_path': metadata.get('file_path', ''),
+                            'file_name': metadata.get('file_name', ''),
+                            'content_preview': metadata.get('content_preview', '')
+                        }
+                    
+                    combined_results.append(result_info)
+                
+                return combined_results
+        
+        # 키워드 검색이 없거나 결과가 없는 경우 벡터 검색 결과만 반환
+        return vector_results[:k]
+
     def _apply_filters(self, metadata: Dict[str, Any], filters: Dict[str, Any]) -> bool:
         """
         메타데이터에 필터 적용
