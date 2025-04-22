@@ -56,11 +56,11 @@ class CodeSearchShell(cmd.Cmd):
                 filters[key.strip()] = value.strip()
         
         # 쿼리 임베딩 생성
-        query_embedding = self.embedder.model.encode(query)
+        query_embedding = self.embedder.model.encode(query, normalize_embeddings=True)
         
         # 검색 실행
         start_time = time.time()
-        results = self.vector_store.search(query_embedding, k=10, filters=filters if filters else None)
+        results = self.vector_store.search(query_embedding, k=5, filters=filters if filters else None)
         elapsed_time = time.time() - start_time
         
         if not results:
@@ -216,7 +216,7 @@ def run_search_ui(data_dir: str = './data'):
     """
     try:
         # 임베더 초기화
-        embedder = CodeEmbedder(model_name='all-MiniLM-L6-v2')
+        embedder = CodeEmbedder(model_name='snunlp/KR-SBERT-V40K-klueNLI-augSTS')
         
         # 인덱스 로드
         vector_store = FaissVectorStore(

@@ -16,7 +16,7 @@
 
 ## 기술 스택
 
-- **Python 3.9+**
+- **Python 3.11+**
 - **FastAPI**: 고성능 비동기 API 서버
 - **Qdrant**: 벡터 데이터베이스 (디스크 기반 저장 지원)
 - **SentenceTransformers**: 임베딩 생성 모델

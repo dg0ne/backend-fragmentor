@@ -16,7 +16,7 @@
 
 ### 요구 사항
 
-- Python 3.13.1+
+- Python 3.11.9
 - 필요한 패키지는 requirements.txt 참고
 
 ### 설치

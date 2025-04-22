@@ -214,7 +214,7 @@ class FaissVectorStore:
         
         return metadata
     
-    def search(self, query_vector: np.ndarray, k: int = 10, filters: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
+    def search(self, query_vector: np.ndarray, k: int = 5, filters: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
         """
         쿼리 벡터와 유사한 코드 파편 검색 (필터링 지원)
         

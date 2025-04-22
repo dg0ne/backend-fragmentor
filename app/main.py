@@ -10,7 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Dict, List, Any, Optional
 
-from app.parser.jsx_parser import parse_react_project
+from app.parser.vue_parser import parse_react_project
 from app.fragmentation.fragmenter import ReactFragmenter
 from app.embedding.engine import CodeEmbedder
 from app.db.qdrant import QdrantVectorStore
