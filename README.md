@@ -43,10 +43,10 @@ pip install -r requirements.txt
 ```bash
 # 가상환경 활성화 후
 # Vue Todo 프로젝트 파편화
-python vuetodo-fragmentor.py --project /path/to/vue-todo
+python vuetodo-fragmentor.py --project ../todo-web
 
 # 데이터 디렉토리 지정 (기본값: ./data)
-python vuetodo-fragmentor.py --project /path/to/vue-todo --data-dir ./custom-data-dir
+python vuetodo-fragmentor.py --project ../todo-web --data-dir {your-data-dir}
 ```
 
 #### 2. 코드 검색
