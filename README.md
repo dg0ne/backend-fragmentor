@@ -24,14 +24,9 @@
 
 ### 요구 사항
 
-- Python 3.9 이상
+- Python 3.11.1+ 이상
 - 필요한 패키지:
-  - esprima==4.0.1
-  - sentence-transformers==2.2.2
-  - faiss-cpu==1.7.4
-  - torch==2.6.0
-  - colorama
-  - tqdm==4.65.0
+  - requirements.txt 참고
 
 ### 설치
 
@@ -53,27 +48,6 @@ pip install --upgrade pip==25.0.1
 pip install -r requirements.txt
 ```
 
-### 가상환경(venv) 활용
-
-생성한 가상환경(venv)은 다음과 같은 용도로 활용됩니다:
-
-- **의존성 관리**: 프로젝트에 필요한 패키지만 설치하여 환경을 깨끗하게 유지
-- **패키지 격리**: 다른 Python 프로젝트와의 패키지 버전 충돌 방지
-- **Python 버전 관리**: 특정 Python 버전으로 프로젝트 실행 가능
-- **재현 가능한 환경**: `requirements.txt`를 통해 동일한 환경을 쉽게 재현
-- **배포 준비**: 가상환경을 통해 실제 서비스 배포 시의 환경과 유사하게 테스트
-
-개발 및 실행 시 항상 가상환경을 활성화한 상태에서 진행하는 것이 좋습니다:
-
-```bash
-# 가상환경 활성화
-source venv/bin/activate  # Linux/Mac
-# 또는
-venv\Scripts\activate     # Windows
-
-# 가상환경 종료
-deactivate
-```
 
 ### 실행 방법
 
@@ -254,53 +228,6 @@ backend-fragmentor/
 - 유사 코드 클러스터링
 - 코드 관계 시각화
 - 복잡한 쿼리 구문 지원
-
-### 요구 사항
-
-- Python 3.11.1+ 이상
-- 필요한 패키지:
-  - requirements.txt 참고
-
-
-### 설치
-
-```bash
-# 저장소 클론
-git clone https://github.com/dg0ne/backend-fragmentor.git
-cd backend-fragmentor
-
-# 가상환경 설정
-python -m venv venv
-source venv/bin/activate  # Linux/Mac
-# 또는
-venv\Scripts\activate     # Windows
-
-# 의존성 설치
-pip install -r requirements.txt
-```
-
-### 실행 방법
-
-#### 코드 파편화 및 벡터화
-
-```bash
-# lifesub-web 프로젝트 파편화
-python lifesubweb-fragmentor.py --project ../lifesub-web
-
-# 커스텀 데이터 디렉토리 지정
-python lifesubweb-fragmentor.py --project ../lifesub-web --data-dir ./custom-data-dir
-```
-
-#### 코드 검색
-
-```bash
-# 대화형 검색 인터페이스 실행
-python search_ui.py
-
-# 데이터 디렉토리 지정
-python search_ui.py --data-dir ./custom-data-dir
-```
-
 
 ## 주의사항
 
