@@ -37,7 +37,9 @@ pip install -r requirements.txt
 ```
 
 ## 사용중인 모델
-snunlp/KR-SBERT-V40K-klueNLI-augSTS
+
+초기 모델 : all-MiniLM-L6-v2
+현재 모델 : snunlp/KR-SBERT-V40K-klueNLI-augSTS
 
 추가 개선 예정
 1. BAAI/bge-m3
