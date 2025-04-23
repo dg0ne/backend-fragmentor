@@ -132,7 +132,7 @@ def search_vue_code(vector_store: FaissVectorStore, query: str, embedder: CodeEm
         k: 검색 결과 수
     """
     # 쿼리 임베딩 생성
-    query_embedding = embedder.model.encode(query, normalize_embeddings=True)
+    query_embedding = embedder.model.encode(query)
     
     # 유사한 코드 파편 검색
     results = vector_store.search(query_embedding, k=k)
@@ -188,7 +188,7 @@ def load_preexisting_index(data_dir: str):
             return None
             
         # 임베더 초기화
-        embedder = CodeEmbedder(model_name='jhgan/ko-sroberta-multitask')
+        embedder = CodeEmbedder(model_name='jhgan/ko-sroberta-multitask', normalize_embeddings=True)
         
         # 벡터 스토어 초기화 (기존 인덱스 로드)
         vector_store = FaissVectorStore(

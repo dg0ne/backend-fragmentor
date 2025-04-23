@@ -14,7 +14,9 @@ class CodeEmbedder:
     코드 조각을 벡터로 변환하는 임베딩 생성기
     """
     
-    def __init__(self, model_name: str = 'jhgan/ko-sroberta-multitask', cache_dir: Optional[str] = None):
+    def __init__(self, model_name: str = 'jhgan/ko-sroberta-multitask', 
+                normalize_embeddings: bool = True, 
+                cache_dir: Optional[str] = None):        
         """
         Args:
             model_name: SentenceTransformer 모델 이름
@@ -51,7 +53,7 @@ class CodeEmbedder:
         Returns:
             np.ndarray: 임베딩 벡터
         """
-        return self.model.encode(text, normalize_embeddings=True)
+        return self.model.encode(text, normalize_embeddings=self.normalize_embeddings)
     
     def embed_batch(self, texts: List[str], batch_size: int = 32) -> List[np.ndarray]:
         """
@@ -64,7 +66,7 @@ class CodeEmbedder:
         Returns:
             List[np.ndarray]: 임베딩 벡터 목록
         """
-        return self.model.encode(texts, batch_size=batch_size, normalize_embeddings=True)
+        return self.model.encode(texts, batch_size=batch_size)
     
     def embed_fragment(self, fragment: Dict[str, Any]) -> np.ndarray:
         """
@@ -86,7 +88,7 @@ class CodeEmbedder:
         embedding_text = self._create_embedding_text(fragment)
         
         # 임베딩 생성
-        embedding = self.model.encode(embedding_text, normalize_embeddings=True)
+        embedding = self.model.encode(embedding_text)
         
         # 캐시 저장
         self._save_to_cache(fragment_id, embedding)
@@ -131,7 +133,7 @@ class CodeEmbedder:
             batch_count = (len(texts_to_embed) + batch_size - 1) // batch_size
             for i in tqdm(range(0, len(texts_to_embed), batch_size), total=batch_count):
                 batch_texts = texts_to_embed[i:i+batch_size]
-                batch_embeddings = self.model.encode(batch_texts, normalize_embeddings=True)
+                batch_embeddings = self.model.encode(batch_texts)
                 
                 # 단일 임베딩이 반환된 경우 (배치 크기 1)
                 if len(batch_texts) == 1 and batch_embeddings.ndim == 1:

@@ -56,7 +56,7 @@ class CodeSearchShell(cmd.Cmd):
                 filters[key.strip()] = value.strip()
         
         # 쿼리 임베딩 생성
-        query_embedding = self.embedder.model.encode(query, normalize_embeddings=True)
+        query_embedding = self.embedder.model.encode(query)
         
         # 앙상블 검색을 위해 원본 쿼리 텍스트도 필터에 추가
         filters['query_text'] = query
