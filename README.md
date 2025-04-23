@@ -42,7 +42,7 @@ pip install -r requirements.txt
 이전 모델 : snunlp/KR-SBERT-V40K-klueNLI-augSTS
 현재 모델 : jhgan/ko-sroberta-multitask
 
-추가 개선 예정
+모델 정보
 1. BAAI/bge-m3
 검색 성능 특화: 8K 토큰 길이 지원과 다중 언어 기능을 갖춘 검색 최적화 모델
 
