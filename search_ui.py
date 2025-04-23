@@ -1,5 +1,5 @@
 """
-Vue Todo 코드 검색 UI
+Vue Todo 코드 검색 UI (Cross-Encoder 재랭킹 기능 추가)
 """
 
 import os
@@ -18,7 +18,8 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from app.parser.vue_parser import parse_vue_project
 from app.fragmenter.fragmenter import VueFragmenter
 from app.embedding.embedder import CodeEmbedder
-from app.storage.faiss_store import FaissVectorStore
+from app.embedding.cross_encoder import CrossEncoder
+from app.storage.faiss_store_updated import FaissVectorStore
 
 # 색상 초기화
 colorama.init()
@@ -29,17 +30,20 @@ class CodeSearchShell(cmd.Cmd):
     intro = f"{Fore.CYAN}Vue Todo 코드 검색 쉘에 오신 것을 환영합니다. 도움말을 보려면 'help'를 입력하세요.{Style.RESET_ALL}"
     prompt = f"{Fore.GREEN}코드검색> {Style.RESET_ALL}"
     
-    def __init__(self, vector_store: FaissVectorStore, embedder: CodeEmbedder):
+    def __init__(self, vector_store: FaissVectorStore, embedder: CodeEmbedder, cross_encoder=None):
         super().__init__()
         self.vector_store = vector_store
         self.embedder = embedder
+        self.cross_encoder = cross_encoder
         self.last_results = []
         self.current_fragment_id = None
+        self.rerank_enabled = cross_encoder is not None
     
     def do_search(self, arg):
         """검색 쿼리를 입력하여 코드 파편 검색. 
         예: search 할일 목록 컴포넌트
-        필터링: search 로그인 처리 --type=component"""
+        필터링: search 로그인 처리 --type=component
+        재랭킹: search 할일 추가 --rerank (Cross-Encoder 사용)"""
         
         if not arg:
             print(f"{Fore.YELLOW}검색어를 입력하세요.{Style.RESET_ALL}")
@@ -50,10 +54,25 @@ class CodeSearchShell(cmd.Cmd):
         args = arg.split('--')
         query = args[0].strip()
         
+        # 재랭킹 옵션 기본값
+        rerank = self.rerank_enabled
+        
         for filter_arg in args[1:]:
             if '=' in filter_arg:
                 key, value = filter_arg.split('=', 1)
                 filters[key.strip()] = value.strip()
+            else:
+                # 단일 플래그 처리
+                flag = filter_arg.strip()
+                if flag == 'rerank':
+                    rerank = True
+                elif flag == 'norerank':
+                    rerank = False
+        
+        # Cross-Encoder가 없으면 재랭킹 비활성화
+        if rerank and not self.cross_encoder:
+            print(f"{Fore.YELLOW}경고: Cross-Encoder 모델이 로드되지 않아 재랭킹을 사용할 수 없습니다.{Style.RESET_ALL}")
+            rerank = False
         
         # 쿼리 임베딩 생성
         query_embedding = self.embedder.model.encode(query)
@@ -68,12 +87,16 @@ class CodeSearchShell(cmd.Cmd):
             except (ValueError, TypeError):
                 pass
         
+        # 재랭킹 옵션 추가
+        filters['rerank'] = rerank
+        
         # 검색 실행
         start_time = time.time()
         results = self.vector_store.search(
             query_vector=query_embedding,
             k=5, 
-            filters=filters if filters else None
+            filters=filters if filters else None,
+            rerank=rerank
         )
 
         elapsed_time = time.time() - start_time
@@ -87,10 +110,19 @@ class CodeSearchShell(cmd.Cmd):
         
         # 결과 출력
         print(f"\n{Fore.CYAN}검색 결과: '{query}' (총 {len(results)}개, {elapsed_time:.3f}초){Style.RESET_ALL}")
+        if rerank:
+            print(f"{Fore.MAGENTA}[Cross-Encoder 재랭킹 적용됨]{Style.RESET_ALL}")
         print(f"{Fore.CYAN}{'='*60}{Style.RESET_ALL}")
         
         for i, result in enumerate(results):
-            print(f"\n{Fore.GREEN}[{i+1}] {result['name']} ({result['type']}){Style.RESET_ALL} - 유사도: {result['score']:.4f}")
+            # 기본 점수 표시
+            score_text = f"유사도: {result['score']:.4f}"
+            
+            # Cross-Encoder 점수가 있으면 함께 표시
+            if 'cross_score' in result:
+                score_text += f" | 재랭킹 점수: {result['cross_score']:.4f}"
+                
+            print(f"\n{Fore.GREEN}[{i+1}] {result['name']} ({result['type']}){Style.RESET_ALL} - {score_text}")
             print(f"  파일: {Fore.BLUE}{result['file_name']}{Style.RESET_ALL}")
             print(f"  {Fore.YELLOW}{result['content_preview']}{Style.RESET_ALL}")
 
@@ -118,6 +150,11 @@ class CodeSearchShell(cmd.Cmd):
                 
                 print(f"파일: {Fore.BLUE}{result['file_path']}{Style.RESET_ALL}")
                 
+                # 점수 정보 표시
+                print(f"벡터 유사도: {result['score']:.4f}")
+                if 'cross_score' in result:
+                    print(f"재랭킹 점수: {result['cross_score']:.4f}")
+                
                 # 타입별 메타데이터 출력
                 if result['type'] == 'component':
                     print(f"컴포넌트 타입: {metadata.get('component_type', 'unknown')}")
@@ -137,125 +174,51 @@ class CodeSearchShell(cmd.Cmd):
             print(f"{Fore.YELLOW}유효한 숫자를 입력하세요.{Style.RESET_ALL}")
     
     def do_similar(self, arg):
-        """현재 보고 있는 파편과 유사한 다른 파편 찾기."""
+        """현재 보고 있는 파편과 유사한 다른 파편 찾기.
+        예: similar
+        재랭킹 적용: similar --rerank"""
         
         if not self.current_fragment_id:
             print(f"{Fore.YELLOW}먼저 view 명령으로 파편을 선택하세요.{Style.RESET_ALL}")
             return
-            
+        
+        # 재랭킹 옵션 파싱
+        rerank = self.rerank_enabled and '--rerank' in arg
+        
+        # 유사 파편 검색
         similar_results = self.vector_store.get_similar_fragments(self.current_fragment_id, k=5)
+        
+        # 재랭킹 적용 
+        if rerank and self.cross_encoder and similar_results:
+            # 현재 파편의 내용 가져오기
+            current_metadata = self.vector_store.fragment_metadata.get(self.current_fragment_id, {})
+            current_content = current_metadata.get('content_preview', '')
+            
+            # 재랭킹 수행
+            similar_results = self.cross_encoder.rerank(
+                query=current_content,
+                passages=similar_results,
+                top_k=5
+            )
         
         if not similar_results:
             print(f"{Fore.YELLOW}유사한 파편을 찾을 수 없습니다.{Style.RESET_ALL}")
             return
             
         print(f"\n{Fore.CYAN}유사한 파편 ({len(similar_results)}개):{Style.RESET_ALL}")
+        if rerank and self.cross_encoder:
+            print(f"{Fore.MAGENTA}[Cross-Encoder 재랭킹 적용됨]{Style.RESET_ALL}")
         print(f"{Fore.CYAN}{'='*60}{Style.RESET_ALL}")
         
         for i, result in enumerate(similar_results):
-            print(f"\n{Fore.GREEN}[{i+1}] {result['name']} ({result['type']}){Style.RESET_ALL} - 유사도: {result['score']:.4f}")
+            # 점수 텍스트 구성
+            score_text = f"유사도: {result['score']:.4f}"
+            if 'cross_score' in result:
+                score_text += f" | 재랭킹 점수: {result['cross_score']:.4f}"
+                
+            print(f"\n{Fore.GREEN}[{i+1}] {result['name']} ({result['type']}){Style.RESET_ALL} - {score_text}")
             print(f"  파일: {Fore.BLUE}{result['file_name']}{Style.RESET_ALL}")
             print(f"  {Fore.YELLOW}{result['content_preview']}{Style.RESET_ALL}")
             
         # 유사 결과를 마지막 결과로 업데이트
         self.last_results = similar_results
-    
-    def do_stats(self, arg):
-        """벡터 저장소 통계 정보 출력."""
-        
-        stats = self.vector_store.get_stats()
-        
-        print(f"\n{Fore.CYAN}벡터 저장소 통계:{Style.RESET_ALL}")
-        print(f"{Fore.CYAN}{'='*60}{Style.RESET_ALL}")
-        
-        print(f"총 벡터 수: {stats['vector_count']}")
-        print(f"벡터 차원: {stats['dimension']}")
-        print(f"인덱스 타입: {stats['index_type']}")
-        
-        print(f"\n{Fore.GREEN}파편 타입별 분포:{Style.RESET_ALL}")
-        for type_name, count in stats['fragment_types'].items():
-            print(f"  {type_name}: {count}개")
-    
-    def do_file(self, arg):
-        """특정 파일의 모든 파편 조회.
-        예: file src/components/TodoItem.vue"""
-        
-        if not arg:
-            print(f"{Fore.YELLOW}파일 경로를 입력하세요.{Style.RESET_ALL}")
-            return
-            
-        results = self.vector_store.get_fragments_by_file(arg)
-        
-        if not results:
-            print(f"{Fore.YELLOW}해당 파일의 파편을 찾을 수 없습니다: {arg}{Style.RESET_ALL}")
-            return
-            
-        print(f"\n{Fore.CYAN}파일 '{arg}'의 파편 ({len(results)}개):{Style.RESET_ALL}")
-        print(f"{Fore.CYAN}{'='*60}{Style.RESET_ALL}")
-        
-        for i, result in enumerate(results):
-            print(f"\n{Fore.GREEN}[{i+1}] {result['name']} ({result['type']}){Style.RESET_ALL}")
-            print(f"  {Fore.YELLOW}{result['content_preview']}{Style.RESET_ALL}")
-            
-        # 파일 파편 결과를 마지막 결과로 업데이트
-        self.last_results = results
-    
-    def do_query(self, arg):
-        """search 명령어의 별칭"""
-        return self.do_search(arg)
-    
-    def do_exit(self, arg):
-        """검색 쉘 종료"""
-        print(f"{Fore.CYAN}Vue Todo 코드 검색을 종료합니다.{Style.RESET_ALL}")
-        return True
-        
-    def do_quit(self, arg):
-        """exit의 별칭"""
-        return self.do_exit(arg)
-        
-    def do_q(self, arg):
-        """exit의 별칭"""
-        return self.do_exit(arg)
-    
-    def default(self, line):
-        """알 수 없는 명령어 처리"""
-        if line.strip():
-            print(f"{Fore.YELLOW}알 수 없는 명령어: {line}{Style.RESET_ALL}")
-            print(f"도움말을 보려면 'help'를 입력하세요.")
-
-def run_search_ui(data_dir: str = './data'):
-    """
-    코드 검색 UI 실행
-    
-    Args:
-        data_dir: 데이터 디렉토리 경로
-    """
-    try:
-        # 임베더 초기화
-        embedder = CodeEmbedder(model_name='jhgan/ko-sroberta-multitask')
-        
-        # 인덱스 로드
-        vector_store = FaissVectorStore(
-            dimension=embedder.vector_dim,
-            index_type='Cosine',
-            data_dir=data_dir,
-            index_name='vue_todo_fragments'
-        )
-        
-        if vector_store.index.ntotal == 0:
-            print(f"{Fore.RED}오류: 인덱스가 비어 있습니다. 먼저 vuetodo-fragmentor.py를 실행하여 인덱스를 생성하세요.{Style.RESET_ALL}")
-            return
-            
-        # 검색 UI 실행
-        search_shell = CodeSearchShell(vector_store, embedder)
-        search_shell.cmdloop()
-    
-    except Exception as e:
-        print(f"{Fore.RED}오류 발생: {str(e)}{Style.RESET_ALL}")
-
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='Vue Todo 코드 검색 UI')
-    parser.add_argument('--data-dir', type=str, default='./data', help='데이터 저장 디렉토리')
-    
-    args = parser.parse_args()
-    run_search_ui(args.data_dir)

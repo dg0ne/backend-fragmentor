@@ -59,6 +59,9 @@ pip install -r requirements.txt
 
 ```bash
 # 가상환경 활성화 후
+# Cross-Encoder 모델 학습:
+python train_cross_encoder.py --examples cross_encoding.json --output-dir ./trained_cross_encoder --test
+
 # Vue Todo 프로젝트 파편화
 python vuetodo-fragmentor.py --project ../todo-web
 

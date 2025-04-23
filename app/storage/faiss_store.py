@@ -1,5 +1,5 @@
 """
-Faiss 벡터 저장소 모듈
+Faiss 벡터 저장소 모듈 (Cross-Encoder 재랭킹 기능 추가)
 """
 
 import os
@@ -18,18 +18,23 @@ class FaissVectorStore:
                  dimension: int, 
                  index_type: str = 'Cosine',
                  data_dir: str = './data',
-                 index_name: str = 'vue_todo_fragments'):
+                 index_name: str = 'vue_todo_fragments',
+                 cross_encoder=None):
         """
         Args:
             dimension: 벡터 차원 수
             index_type: 인덱스 타입 ('L2', 'IP', 'Cosine')
             data_dir: 데이터 저장 디렉토리
             index_name: 인덱스 이름
+            cross_encoder: CrossEncoder 인스턴스 (재랭킹용)
         """
         self.dimension = dimension
         self.index_type = index_type
         self.data_dir = data_dir
         self.index_name = index_name
+        
+        # Cross-Encoder 설정
+        self.cross_encoder = cross_encoder
         
         # 저장 디렉토리 생성
         self.index_dir = os.path.join(data_dir, 'faiss')
@@ -412,109 +417,6 @@ class FaissVectorStore:
         
         return results
     
-    def search(self, query_vector: np.ndarray, k: int = 5, 
-            filters: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
-        """
-        쿼리 벡터와 유사한 코드 파편 검색 (앙상블 검색 적용)
-        
-        Args:
-            query_vector: 쿼리 벡터
-            k: 반환할 결과 수
-            filters: 필터링 조건 (예: {'type': 'component'})
-            
-        Returns:
-            List[Dict]: 검색 결과 목록
-        """
-        if self.index.ntotal == 0:
-            return []
-        
-        # filters에서 앙상블 관련 옵션 추출
-        ensemble_weight = 0.5  # 기본값
-        query_text = None
-        
-        if filters and 'query_text' in filters:
-            query_text = filters.pop('query_text')
-        
-        if filters and 'ensemble_weight' in filters:
-            try:
-                ensemble_weight = float(filters.pop('ensemble_weight'))
-            except (ValueError, TypeError):
-                pass
-        
-        # 벡터 검색 수행 
-        vector_results = self._vector_search(query_vector, k=k*2, filters=filters)
-        
-        # 키워드 검색 수행 (query_text가 있는 경우만)
-        keyword_results = []
-        if query_text:
-            keyword_results = self._keyword_search(query_text, k=k*2)
-            
-            # 앙상블 검색 (벡터 + 키워드 결합)
-            if keyword_results:
-                # 결과 결합을 위한 딕셔너리
-                vector_scores = {r['id']: r['score'] for r in vector_results}
-                keyword_scores = {r['id']: r['score'] for r in keyword_results}
-                
-                # 모든 고유 파편 ID 수집
-                all_ids = set(vector_scores.keys()) | set(keyword_scores.keys())
-                
-                # 점수 정규화를 위한 최대값
-                max_vector_score = max(vector_scores.values()) if vector_scores else 1.0
-                max_keyword_score = max(keyword_scores.values()) if keyword_scores else 1.0
-                
-                # 결합 점수 계산
-                combined_scores = {}
-                for fragment_id in all_ids:
-                    # 정규화된 벡터 점수 (없으면 0)
-                    norm_vector_score = vector_scores.get(fragment_id, 0) / max_vector_score
-                    
-                    # 정규화된 키워드 점수 (없으면 0)
-                    norm_keyword_score = keyword_scores.get(fragment_id, 0) / max_keyword_score
-                    
-                    # 가중 결합 점수 계산
-                    combined_scores[fragment_id] = (
-                        ensemble_weight * norm_vector_score + 
-                        (1 - ensemble_weight) * norm_keyword_score
-                    )
-                
-                # 결합 점수 기준 정렬
-                sorted_ids = sorted(
-                    combined_scores.items(),
-                    key=lambda x: x[1],
-                    reverse=True
-                )[:k]
-                
-                # 결과 포맷팅
-                combined_results = []
-                for fragment_id, score in sorted_ids:
-                    # 기존 결과에서 세부 정보 찾기
-                    result_info = None
-                    for r in vector_results + keyword_results:
-                        if r['id'] == fragment_id:
-                            result_info = r.copy()
-                            result_info['score'] = float(score)  # 앙상블 점수로 업데이트
-                            break
-                    
-                    # 결과 정보가 없으면 메타데이터에서 직접 가져오기
-                    if not result_info:
-                        metadata = self.fragment_metadata.get(fragment_id, {})
-                        result_info = {
-                            'id': fragment_id,
-                            'score': float(score),
-                            'type': metadata.get('type', ''),
-                            'name': metadata.get('name', ''),
-                            'file_path': metadata.get('file_path', ''),
-                            'file_name': metadata.get('file_name', ''),
-                            'content_preview': metadata.get('content_preview', '')
-                        }
-                    
-                    combined_results.append(result_info)
-                
-                return combined_results
-        
-        # 키워드 검색이 없거나 결과가 없는 경우 벡터 검색 결과만 반환
-        return vector_results[:k]
-
     def _apply_filters(self, metadata: Dict[str, Any], filters: Dict[str, Any]) -> bool:
         """
         메타데이터에 필터 적용
@@ -526,7 +428,14 @@ class FaissVectorStore:
         Returns:
             bool: 필터 통과 여부
         """
+        # rerank와 ensemble_weight는 필터링에서 제외
+        skip_keys = ['rerank', 'ensemble_weight', 'query_text']
+        
         for key, value in filters.items():
+            # 필터링 제외 키는 건너뛰기
+            if key in skip_keys:
+                continue
+                
             if key not in metadata:
                 return False
                 
@@ -542,6 +451,75 @@ class FaissVectorStore:
                 return False
                 
         return True
+    
+    def search(self, query_vector: np.ndarray, k: int = 5, 
+            filters: Optional[Dict[str, Any]] = None,
+            rerank: bool = False) -> List[Dict[str, Any]]:
+        """
+        쿼리 벡터와 유사한 코드 파편 검색 (앙상블 검색 적용)
+        
+        Args:
+            query_vector: 쿼리 벡터
+            k: 반환할 결과 수
+            filters: 필터링 조건 (예: {'type': 'component'})
+            rerank: Cross-Encoder로 재랭킹 수행 여부
+            
+        Returns:
+            List[Dict]: 검색 결과 목록
+        """
+        if self.index.ntotal == 0:
+            return []
+        
+        # filters에서 앙상블과 재랭킹 관련 옵션 추출
+        ensemble_weight = 0.5  # 기본값
+        query_text = None
+        candidate_k = k * 3 if rerank else k  # 재랭킹 시 더 많은 후보 검색
+        
+        if filters and 'query_text' in filters:
+            query_text = filters.pop('query_text')
+        
+        if filters and 'ensemble_weight' in filters:
+            try:
+                ensemble_weight = float(filters.pop('ensemble_weight'))
+            except (ValueError, TypeError):
+                pass
+        
+        # 벡터 검색 수행 
+        vector_results = self._vector_search(query_vector, k=candidate_k, filters=filters)
+        
+        # 키워드 검색 수행 (query_text가 있는 경우만)
+        keyword_results = []
+        if query_text:
+            keyword_results = self._keyword_search(query_text, k=candidate_k)
+            
+            # 앙상블 검색 (벡터 + 키워드 결합)
+            if keyword_results:
+                combined_results = self._ensemble_results(
+                    vector_results=vector_results,
+                    keyword_results=keyword_results,
+                    k=candidate_k,
+                    weight=ensemble_weight
+                )
+            else:
+                combined_results = vector_results
+        else:
+            combined_results = vector_results
+        
+        # Cross-Encoder 재랭킹 적용
+        if rerank and self.cross_encoder and query_text:
+            try:
+                reranked_results = self.cross_encoder.rerank(
+                    query=query_text,
+                    passages=combined_results,
+                    top_k=k
+                )
+                return reranked_results
+            except Exception as e:
+                print(f"재랭킹 중 오류 발생: {str(e)}")
+                # 오류 발생 시 원래 결과 사용
+                return combined_results[:k]
+        
+        return combined_results[:k]
     
     def get_stats(self) -> Dict[str, Any]:
         """
@@ -573,7 +551,7 @@ class FaissVectorStore:
                 if component_name:
                     component_names.add(component_name)
         
-        return {
+        stats = {
             'vector_count': self.index.ntotal,
             'dimension': self.dimension,
             'index_type': self.index_type,
@@ -581,6 +559,19 @@ class FaissVectorStore:
             'file_counts': len(file_counts),
             'component_count': len(component_names)
         }
+        
+        # Cross-Encoder 정보 추가
+        if self.cross_encoder:
+            stats['cross_encoder'] = {
+                'model_name': self.cross_encoder.model_name,
+                'enabled': True
+            }
+        else:
+            stats['cross_encoder'] = {
+                'enabled': False
+            }
+            
+        return stats
     
     def get_fragments_by_file(self, file_path: str) -> List[Dict[str, Any]]:
         """
