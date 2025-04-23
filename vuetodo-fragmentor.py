@@ -74,7 +74,7 @@ def process_vue_todo(project_path: str, data_dir: str = './data'):
     
     # 4. 임베딩 생성
     print("\n[3/4] 임베딩 생성 중...")
-    embedder = CodeEmbedder(model_name='snunlp/KR-SBERT-V40K-klueNLI-augSTS', cache_dir=embeddings_cache_dir)
+    embedder = CodeEmbedder(model_name='jhgan/ko-sroberta-multitask', cache_dir=embeddings_cache_dir)
     
     print(f"  - 모델: {embedder.model_name}")
     print(f"  - 벡터 차원: {embedder.vector_dim}")
@@ -188,7 +188,7 @@ def load_preexisting_index(data_dir: str):
             return None
             
         # 임베더 초기화
-        embedder = CodeEmbedder(model_name='snunlp/KR-SBERT-V40K-klueNLI-augSTS')
+        embedder = CodeEmbedder(model_name='jhgan/ko-sroberta-multitask')
         
         # 벡터 스토어 초기화 (기존 인덱스 로드)
         vector_store = FaissVectorStore(
@@ -271,7 +271,7 @@ def main():
     # 검색 모드
     if args.search or args.query:
         vector_store = result['vector_store']
-        embedder = CodeEmbedder(model_name='snunlp/KR-SBERT-V40K-klueNLI-augSTS')
+        embedder = CodeEmbedder(model_name='jhgan/ko-sroberta-multitask')
         
         if args.query:
             # 단일 쿼리 검색

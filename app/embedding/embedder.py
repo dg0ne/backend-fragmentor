@@ -14,7 +14,7 @@ class CodeEmbedder:
     코드 조각을 벡터로 변환하는 임베딩 생성기
     """
     
-    def __init__(self, model_name: str = 'snunlp/KR-SBERT-V40K-klueNLI-augSTS', cache_dir: Optional[str] = None):
+    def __init__(self, model_name: str = 'jhgan/ko-sroberta-multitask', cache_dir: Optional[str] = None):
         """
         Args:
             model_name: SentenceTransformer 모델 이름

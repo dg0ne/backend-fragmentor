@@ -232,7 +232,7 @@ def run_search_ui(data_dir: str = './data'):
     """
     try:
         # 임베더 초기화
-        embedder = CodeEmbedder(model_name='snunlp/KR-SBERT-V40K-klueNLI-augSTS')
+        embedder = CodeEmbedder(model_name='jhgan/ko-sroberta-multitask')
         
         # 인덱스 로드
         vector_store = FaissVectorStore(
