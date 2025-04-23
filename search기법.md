@@ -47,7 +47,7 @@ def rerank_with_cross_encoder(query, candidates, cross_encoder_model, top_k=3):
 
 ### 모델 선택 제안
 - **Bi-Encoder (기존)**: 'jhgan/ko-sroberta-multitask'
-- **Cross-Encoder (추가)**: 'cross-encoder/ms-marco-MiniLM-L-6-v2' 또는 한국어 최적화 모델
+- **Cross-Encoder (추가)**: 'dragonkue/bge-reranker-v2-m3-ko' 또는 한국어 최적화 모델
 
 ## 장단점 분석
 

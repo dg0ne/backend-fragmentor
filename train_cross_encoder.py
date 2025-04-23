@@ -53,7 +53,7 @@ class CrossEncoderDataset(Dataset):
         encoding = {key: val.squeeze(0) for key, val in encoding.items()}
         
         # 레이블 추가
-        encoding['labels'] = torch.tensor(label, dtype=torch.long)
+        encoding['labels'] = torch.tensor(label, dtype=torch.float)
         
         return encoding
 
@@ -119,7 +119,7 @@ def prepare_training_data(examples_file, negative_ratio=3):
     
     return query_passage_pairs, labels
 
-def train_cross_encoder(examples_file, output_dir='./trained_model', model_name='cross-encoder/ms-marco-MiniLM-L-6-v2', epochs=3, batch_size=16):
+def train_cross_encoder(examples_file, output_dir='./trained_model', model_name='dragonkue/bge-reranker-v2-m3-ko', epochs=3, batch_size=16):
     """
     Cross-Encoder 모델 학습
     
@@ -143,7 +143,7 @@ def train_cross_encoder(examples_file, output_dir='./trained_model', model_name=
     
     # 모델 및 토크나이저 로드
     tokenizer = AutoTokenizer.from_pretrained(model_name)
-    model = AutoModelForSequenceClassification.from_pretrained(model_name, num_labels=2)
+    model = AutoModelForSequenceClassification.from_pretrained(model_name, num_labels=1)
     
     # 데이터셋 생성
     train_dataset = CrossEncoderDataset(tokenizer, train_pairs, train_labels)
@@ -159,11 +159,11 @@ def train_cross_encoder(examples_file, output_dir='./trained_model', model_name=
         weight_decay=0.01,
         logging_dir=f"{output_dir}/logs",
         logging_steps=10,
-        evaluation_strategy="epoch",
+        eval_strategy="epoch",  # eval_strategy에서 수정
         save_strategy="epoch",
         load_best_model_at_end=True,
         metric_for_best_model="loss",
-        greater_is_better=False,
+        greater_is_better=False
     )
     
     # 트레이너 초기화
@@ -252,7 +252,7 @@ def main():
     parser = argparse.ArgumentParser(description='Cross-Encoder 모델 학습')
     parser.add_argument('--examples', type=str, required=True, help='예제 데이터 파일 경로(JSON)')
     parser.add_argument('--output-dir', type=str, default='./trained_model', help='모델 저장 디렉토리')
-    parser.add_argument('--model', type=str, default='cross-encoder/ms-marco-MiniLM-L-6-v2', help='기본 모델 이름')
+    parser.add_argument('--model', type=str, default='dragonkue/bge-reranker-v2-m3-ko', help='기본 모델 이름')
     parser.add_argument('--epochs', type=int, default=3, help='학습 에포크 수')
     parser.add_argument('--batch-size', type=int, default=16, help='배치 크기')
     parser.add_argument('--test', action='store_true', help='학습 후 테스트 수행')

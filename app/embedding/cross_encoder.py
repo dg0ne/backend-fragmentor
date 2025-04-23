@@ -15,7 +15,7 @@ class CrossEncoder:
     질문-파편 쌍의 관련성을 평가하기 위한 Cross-Encoder
     """
     
-    def __init__(self, model_name: str = 'cross-encoder/ms-marco-MiniLM-L-6-v2', 
+    def __init__(self, model_name: str = 'dragonkue/bge-reranker-v2-m3-ko', 
                  device: str = 'cpu',
                  cache_dir: Optional[str] = None,
                  max_seq_length: int = 512):
