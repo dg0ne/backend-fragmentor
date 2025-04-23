@@ -14,8 +14,9 @@ class CrossEncoder:
     """
     질문-파편 쌍의 관련성을 평가하기 위한 Cross-Encoder
     """
-    
-    def __init__(self, model_name: str = 'dragonkue/bge-reranker-v2-m3-ko', 
+    # 파인튜닝 된 모델 사용 할꺼라 경로변경
+    # def __init__(self, model_name: str = 'dragonkue/bge-reranker-v2-m3-ko',
+    def __init__(self, model_name: str = './trained_cross_encoder',
                  device: str = 'cpu',
                  cache_dir: Optional[str] = None,
                  max_seq_length: int = 512):
