@@ -23,6 +23,7 @@ class CodeEmbedder:
             cache_dir: 임베딩 캐싱 디렉토리
         """
         self._model_name = model_name
+        self._normalize_embeddings = normalize_embeddings
         
         # 모델 초기화
         self.model = SentenceTransformer(model_name, trust_remote_code=True)
