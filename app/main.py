@@ -13,11 +13,9 @@ from typing import Dict, List, Any, Optional
 from app.parser.vue_parser import parse_react_project
 from app.fragmentation.fragmenter import ReactFragmenter
 from app.embedding.engine import CodeEmbedder
-from app.db.qdrant import QdrantVectorStore
 from app.services.analyzer import SourceCodeAnalyzer
 from app.services.indexing import IndexingService
 from app.core.config import settings
-from app.core.logging import logger
 
 # FastAPI 애플리케이션 초기화
 app = FastAPI(
