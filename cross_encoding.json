@@ -1,0 +1,452 @@
+[
+  {
+    "fragment_type": "component",
+    "fragment_path": "src/components/todo/TodoItem.vue",
+    "fragment_summary": "할일 항목을 표시하는 컴포넌트로, 체크박스, 우선순위 표시, 카테고리, 마감일 정보를 포함",
+    "questions": [
+      "Vue Todo 앱에서 각 할일 항목(TodoItem)의 우선순위를 시각적으로 어떻게 구분하나요?",
+      "할일 항목의 기한이 지났을 때 어떻게 표시되나요?",
+      "체크박스를 클릭해서 완료 처리한 할일은 UI에서 어떻게 변화가 있나요?"
+    ]
+  },
+  {
+    "fragment_type": "template",
+    "fragment_path": "src/components/todo/TodoForm.vue",
+    "fragment_summary": "할일 추가/수정을 위한 입력 폼으로 제목, 설명, 우선순위, 카테고리, 마감일 필드 제공",
+    "questions": [
+      "할일 추가 폼에서 사용자가 입력해야 하는 필수 필드는 무엇인가요?",
+      "할일 수정 모드와 생성 모드에서 폼의 제출 버튼 텍스트가 어떻게 다른가요?",
+      "TodoForm 컴포넌트에서 사용자 입력 값의 유효성을 어떻게 검사하나요?"
+    ]
+  },
+  {
+    "fragment_type": "script",
+    "fragment_path": "src/store/modules/todos.js",
+    "fragment_summary": "할일 관리를 위한 Vuex 스토어 모듈로 할일 추가, 수정, 삭제, 상태 관리 등의 기능 제공",
+    "questions": [
+      "할일 목록을 어디에 저장하고 있으며, 앱 재시작 시 데이터가 유지되는 방식은 무엇인가요?",
+      "완료된 할일만 필터링하는 기능은 어떤 함수를 통해 구현되었나요?",
+      "새 할일을 생성할 때 자동으로 부여되는 기본값(default values)에는 어떤 것들이 있나요?"
+    ]
+  },
+  {
+    "fragment_type": "style",
+    "fragment_path": "src/components/todo/TodoItem.vue",
+    "fragment_summary": "할일 항목의 스타일로 우선순위별 색상 구분, 완료 항목의 시각적 표현 등 정의",
+    "questions": [
+      "할일 항목의 우선순위(높음, 중간, 낮음)는 CSS에서 어떻게 시각적으로 구분하나요?",
+      "완료된 할일 항목의 배경색은 어떻게 스타일링되어 있나요?",
+      "TodoItem 컴포넌트에서 호버 효과는 어떻게 구현되어 있나요?"
+    ]
+  },
+  {
+    "fragment_type": "script",
+    "fragment_path": "src/components/home/RecentTodosCard.vue",
+    "fragment_summary": "홈 화면에 표시되는 최근 할일 목록 카드 컴포넌트의 로직",
+    "questions": [
+      "최근 할일 카드에서 날짜 포맷은 어떤 방식으로 처리되나요?",
+      "기한이 지난 할일은 RecentTodosCard에서 어떻게 감지하고 표시하나요?",
+      "할일의 우선순위별 색상 클래스는 어떻게 관리되고 있나요?"
+    ]
+  },
+  {
+    "fragment_type": "script",
+    "fragment_path": "src/views/TodoStats.vue",
+    "fragment_summary": "할일 통계 페이지로 Chart.js를 사용한 다양한 통계 차트 제공",
+    "questions": [
+      "완료율을 계산하는 공식은 무엇이며 어떤 Vue 계산된 속성에 정의되어 있나요?",
+      "Chart.js로 구현된 차트 종류는 무엇이며 각각 어떤 통계를 보여주나요?",
+      "주간 완료 추이 차트의 데이터는 어떻게 생성하고 가공하나요?"
+    ]
+  },
+  {
+    "fragment_type": "template",
+    "fragment_path": "src/views/Settings.vue",
+    "fragment_summary": "앱 설정 화면으로 다크모드 전환, 카테고리 관리, 데이터 가져오기/내보내기 기능 제공",
+    "questions": [
+      "다크 모드 토글 스위치는 어떤 HTML/CSS 요소로 구현되어 있나요?",
+      "카테고리 추가 및 관리 인터페이스는 어떻게 구성되어 있나요?",
+      "데이터 내보내기 기능은 어떤 파일 형식을 지원하며 어떻게 구현되어 있나요?"
+    ]
+  },
+  {
+    "fragment_type": "script",
+    "fragment_path": "src/store/modules/categories.js",
+    "fragment_summary": "카테고리 관리를 위한 Vuex 스토어 모듈",
+    "questions": [
+      "기본 카테고리('일반')는 어떤 특별한 제약 조건이 있나요?",
+      "카테고리를 삭제할 때 해당 카테고리를 사용하고 있는 할일은 어떻게 처리되나요?",
+      "새로운 카테고리 추가 시 중복 검사는 어떻게 이루어지나요?"
+    ]
+  },
+  {
+    "fragment_type": "script",
+    "fragment_path": "src/router/routers.js",
+    "fragment_summary": "Vue Router 설정으로 앱의 라우팅 정의",
+    "questions": [
+      "새 할일 생성 페이지의 라우트 경로와 이름은 무엇인가요?",
+      "라우트 제목이 페이지 타이틀에 어떻게 반영되나요?",
+      "할일 수정 페이지에서 URL 파라미터는 어떻게 컴포넌트에 전달되나요?"
+    ]
+  },
+  {
+    "fragment_type": "template",
+    "fragment_path": "src/components/todo/TodoFilter.vue",
+    "fragment_summary": "할일 목록 필터링을 위한 컴포넌트",
+    "questions": [
+      "TodoFilter에서 제공하는 필터 옵션들은 무엇이며 어떤 UI 요소로 구현되어 있나요?",
+      "필터 변경 시 부모 컴포넌트에 어떻게 이벤트를 전달하나요?",
+      "카테고리 필터에 표시되는 옵션들은 어디서 가져오나요?"
+    ]
+  },
+  {
+    "fragment_type": "component",
+    "fragment_path": "src/components/layout/NavBar.vue",
+    "fragment_summary": "앱 상단의 네비게이션 바 컴포넌트",
+    "questions": [
+      "NavBar에서 제공하는 네비게이션 링크는 어떤 페이지들로 연결되나요?",
+      "NavBar 컴포넌트는 어떤 props를 받아 사용하나요?",
+      "반응형 디자인 요소가 NavBar에 적용되어 있나요?"
+    ]
+  },
+  {
+    "fragment_type": "script",
+    "fragment_path": "src/store/index.js",
+    "fragment_summary": "앱의 메인 Vuex 스토어 설정",
+    "questions": [
+      "다크 모드 설정은 어디에 저장되며 페이지 새로고침 후에도 유지되나요?",
+      "시스템 테마 설정을 감지하는 기능이 있나요?",
+      "스토어에 등록된 모듈은 무엇이 있으며 각각 어떤 기능을 담당하나요?"
+    ]
+  },
+  {
+    "fragment_type": "component",
+    "fragment_path": "src/components/home/HomeStatsCard.vue",
+    "fragment_summary": "홈 화면에 표시되는 통계 요약 카드 컴포넌트",
+    "questions": [
+      "완료율 진행 바는 어떻게 구현되어 있으며 퍼센트 계산은 어떻게 하나요?",
+      "통계 카드에 표시되는 숫자 데이터는 어떤 속성으로 전달받나요?",
+      "각 통계 항목(전체, 완료, 진행 중, 기한 초과)은 어떻게 시각적으로 구분되나요?"
+    ]
+  },
+  {
+    "fragment_type": "style",
+    "fragment_path": "src/assets/css/main.css",
+    "fragment_summary": "앱 전체에 적용되는 글로벌 CSS 스타일",
+    "questions": [
+      "다크 모드에서 색상 변수는 어떻게 재정의되나요?",
+      "애니메이션 효과는 어떤 종류가 정의되어 있나요?",
+      "토스트 메시지의 종류와 스타일은 어떻게 구현되어 있나요?"
+    ]
+  },
+  {
+    "fragment_type": "component",
+    "fragment_path": "src/views/Home.vue",
+    "fragment_summary": "앱의 홈 화면 컴포넌트",
+    "questions": [
+      "홈 화면에서 사용자에게 표시되는 주요 기능 카드는 무엇이며 어떻게 구성되어 있나요?",
+      "최근 할일 목록은 어떤 기준으로 정렬되어 표시되나요?",
+      "홈 화면에서 할일 통계는 어떤 데이터를 계산하여 보여주나요?"
+    ]
+  },
+  {
+    "fragment_type": "component",
+    "fragment_path": "src/components/ui/CheckboxComponent.vue",
+    "fragment_summary": "커스텀 체크박스 UI 컴포넌트",
+    "questions": [
+      "CheckboxComponent에서 체크박스 상태가 변경될 때 부모 컴포넌트에 어떻게 알리나요?",
+      "체크박스의 id 속성은 어떻게 생성되나요?",
+      "커스텀 체크박스의 체크 표시는 CSS에서 어떻게 구현되어 있나요?"
+    ]
+  },
+  {
+    "fragment_type": "script",
+    "fragment_path": "src/views/TodoEdit.vue",
+    "fragment_summary": "할일 수정 페이지의 로직",
+    "questions": [
+      "할일 ID를 찾지 못했을 때 사용자에게 어떤 오류 메시지를 보여주나요?",
+      "TodoEdit 컴포넌트에서 할일 데이터를 로드하는 라이프사이클 메소드는 무엇인가요?",
+      "로딩 중 상태를 표시하는 스피너 애니메이션은 어떻게 구현되어 있나요?"
+    ]
+  },
+  {
+    "fragment_type": "template",
+    "fragment_path": "src/components/layout/AppFooter.vue",
+    "fragment_summary": "앱 하단의 푸터 컴포넌트",
+    "questions": [
+      "푸터에 표시되는 네비게이션 링크는 무엇이 있나요?",
+      "푸터에 표시되는 저작권 정보의 연도는 어떻게 동적으로 생성되나요?",
+      "푸터의 반응형 레이아웃은 어떻게 구현되어 있나요?"
+    ]
+  },
+  {
+    "fragment_type": "component",
+    "fragment_path": "src/views/NotFound.vue",
+    "fragment_summary": "404 페이지를 찾을 수 없음 화면",
+    "questions": [
+      "사용자가 존재하지 않는 페이지에 접근했을 때 어떤 옵션을 제공하나요?",
+      "404 페이지에서 이전 페이지로 돌아가는 기능은 어떻게 구현되어 있나요?",
+      "에러 코드와 메시지는 어떻게 스타일링되어 있나요?"
+    ]
+  },
+  {
+    "fragment_type": "script",
+    "fragment_path": "src/components/todo/TodoForm.vue",
+    "fragment_summary": "할일 폼 컴포넌트의 데이터 처리 로직",
+    "questions": [
+      "할일 폼 제출 시 어떤 유효성 검사를 수행하나요?",
+      "편집 모드와 생성 모드는 어떻게 구분하여 처리하나요?",
+      "폼 초기화 로직은 언제 어떻게 실행되나요?"
+    ]
+  },
+  {
+    "fragment_type": "script",
+    "fragment_path": "src/components/home/FeatureCard.vue",
+    "fragment_summary": "홈 화면의 기능 소개 카드 컴포넌트 로직",
+    "questions": [
+      "FeatureCard에서 아이콘을 동적으로 렌더링하는 방식은 무엇인가요?",
+      "카드 호버 효과는 어떻게 구현되어 있나요?",
+      "컴포넌트가 지원하는 아이콘 종류는 무엇이 있나요?"
+    ]
+  },
+  {
+    "fragment_type": "template",
+    "fragment_path": "src/components/todo/TodoListComponent.vue", 
+    "fragment_summary": "할일 목록 표시를 위한 주요 컴포넌트",
+    "questions": [
+      "할일이 없을 때 사용자에게 보여주는 메시지와 액션은 무엇인가요?",
+      "할일 목록에 적용된 애니메이션 효과는 무엇인가요?",
+      "TodoList 컴포넌트에서 필터링된 할일을 어떻게 계산하나요?"
+    ]
+  },
+  {
+    "fragment_type": "component",
+    "fragment_path": "src/App.vue",
+    "fragment_summary": "애플리케이션의 루트 컴포넌트",
+    "questions": [
+      "App 컴포넌트에서 사용하는 자식 컴포넌트는 무엇이 있나요?",
+      "앱 제목(appTitle)은 어디서 정의되고 어떻게 사용되나요?",
+      "앱의 전체 레이아웃 구조는 어떻게 구성되어 있나요?"
+    ]
+  },
+  {
+    "fragment_type": "style",
+    "fragment_path": "src/components/ui/CheckboxComponent.vue",
+    "fragment_summary": "커스텀 체크박스의 스타일 정의",
+    "questions": [
+      "체크박스의 체크 표시는 어떤 CSS 기법으로 구현되어 있나요?",
+      "체크박스의 크기와 테두리는 어떻게 정의되어 있나요?",
+      "체크 상태일 때 배경색과 테두리색은 어떻게 변화하나요?"
+    ]
+  },
+  {
+    "fragment_type": "template",
+    "fragment_path": "src/components/home/HomeStatsCard.vue",
+    "fragment_summary": "홈 화면의 통계 카드 템플릿",
+    "questions": [
+      "통계 카드에서 각 통계 항목은 어떤 그리드 레이아웃으로 배치되어 있나요?",
+      "완료율 프로그레스 바는 어떻게 구현되어 있나요?",
+      "통계 상세 페이지로 이동하는 링크는 어디에 위치하며 어떻게 스타일링되어 있나요?"
+    ]
+  },
+  {
+    "fragment_type": "script",
+    "fragment_path": "src/components/todo/TodoListComponent.vue",
+    "fragment_summary": "할일 목록 처리 로직",
+    "questions": [
+      "TodoList 컴포넌트가 마운트될 때 어떤 데이터를 로드하나요?",
+      "할일 상태 토글 기능은 어떤 메소드에서 처리되나요?",
+      "필터 변경 이벤트를 받아 어떻게 처리하나요?"
+    ]
+  },
+  {
+    "fragment_type": "template",
+    "fragment_path": "src/views/TodoStats.vue",
+    "fragment_summary": "통계 화면의 차트 및 UI 요소",
+    "questions": [
+      "통계 페이지의 차트는 어떤 레이아웃으로 배치되어 있나요?",
+      "데이터가 없을 때 사용자에게 어떤 UI를 표시하나요?",
+      "완료율 도넛 차트의 중앙에는 어떤 정보가 표시되나요?"
+    ]
+  },
+  {
+    "fragment_type": "component",
+    "fragment_path": "src/views/TodoCreate.vue",
+    "fragment_summary": "새 할일 생성 페이지",
+    "questions": [
+      "할일 생성 페이지의 구조와, 사용하는 하위 컴포넌트는 무엇인가요?",
+      "TodoCreate와 TodoEdit 컴포넌트의 차이점은 무엇인가요?",
+      "새 할일 생성 후 사용자는 어떤 페이지로 리디렉션되나요?"
+    ]
+  },
+  {
+    "fragment_type": "script",
+    "fragment_path": "src/main.js",
+    "fragment_summary": "Vue 애플리케이션의 진입점",
+    "questions": [
+      "Vue 애플리케이션에 등록된 주요 플러그인은 무엇인가요?",
+      "CSS 스타일은 어떻게 import되고 있나요?",
+      "앱이 마운트되는 DOM 요소는 무엇인가요?"
+    ]
+  },
+  {
+    "fragment_type": "component",
+    "fragment_path": "src/components/icons/CalendarIcon.vue",
+    "fragment_summary": "캘린더 아이콘 SVG 컴포넌트",
+    "questions": [
+      "캘린더 아이콘은 어떤 SVG 패스로 구성되어 있나요?",
+      "아이콘 컴포넌트는 어떤 커스터마이징 옵션을 제공하나요?",
+      "이 아이콘은 앱의 어떤 부분에서 사용되고 있나요?"
+    ]
+  },
+  {
+    "fragment_type": "script",
+    "fragment_path": "src/views/Home.vue",
+    "fragment_summary": "홈 화면의 데이터 처리 및 컴포넌트 로직",
+    "questions": [
+      "홈 화면에서 최근 할일은 어떤 기준으로 정렬해서 보여주나요?",
+      "홈 화면의 feature 카드에 표시되는 기능 아이콘들은 어떻게 정의되고 있나요?",
+      "홈 화면에서 사용하는 Vuex 스토어의 액션과 게터는 무엇인가요?"
+    ]
+  },
+  {
+    "fragment_type": "component",
+    "fragment_path": "src/views/Settings.vue",
+    "fragment_summary": "설정 화면 컴포넌트",
+    "questions": [
+      "설정 화면에서 카테고리 이름 변경은 어떤 절차로 이루어지나요?",
+      "데이터 내보내기/가져오기 기능은 어떤 파일 형식을 사용하나요?",
+      "모든 데이터 초기화 시 사용자에게 어떤 확인 절차를 거치나요?"
+    ]
+  },
+  {
+    "fragment_type": "template",
+    "fragment_path": "src/components/home/RecentTodosCard.vue",
+    "fragment_summary": "최근 할일 카드의 UI 템플릿",
+    "questions": [
+      "최근 할일이 없을 때 사용자에게 어떤 메시지와 액션을 제공하나요?",
+      "할일의 상태(완료, 진행 중, 기한 초과)는 어떻게 시각적으로 표현되나요?",
+      "각 할일 항목에서 제공하는 링크나 액션은 무엇이 있나요?"
+    ]
+  },
+  {
+    "fragment_type": "component",
+    "fragment_path": "src/components/todo/TodoFilter.vue",
+    "fragment_summary": "할일 필터링 컴포넌트",
+    "questions": [
+      "TodoFilter에서 제공하는 필터 옵션 종류는 무엇인가요?",
+      "필터 상태가 변경될 때 어떤 이벤트가 발생하며 어떤 데이터가 전달되나요?",
+      "모바일과 데스크톱 화면에서 필터 레이아웃은 어떻게 다르게 표시되나요?"
+    ]
+  },
+  {
+    "fragment_type": "style",
+    "fragment_path": "src/views/TodoStats.vue",
+    "fragment_summary": "통계 화면의 스타일 정의",
+    "questions": [
+      "로딩 스피너의 애니메이션은 어떻게 구현되어 있나요?",
+      "차트 컨테이너의 크기와 반응형 설정은 어떻게 되어 있나요?",
+      "통계 카드의 그림자와 둥근 모서리는 어떤 CSS 속성으로 정의되어 있나요?"
+    ]
+  },
+  {
+    "fragment_type": "template",
+    "fragment_path": "public/index.html",
+    "fragment_summary": "앱의 기본 HTML 템플릿",
+    "questions": [
+      "앱에서 사용하는 폰트는 무엇이며 어떻게 로드되나요?",
+      "다크 모드를 위한 CSS 클래스 설정은 어떻게 되어 있나요?",
+      "JavaScript가 비활성화된 경우 사용자에게 어떤 메시지를 보여주나요?"
+    ]
+  },
+  {
+    "fragment_type": "script",
+    "fragment_path": "src/components/layout/AppFooter.vue",
+    "fragment_summary": "푸터 컴포넌트의 JavaScript 로직",
+    "questions": [
+      "푸터에 표시되는 현재 연도는 어떤 계산된 속성을 통해 생성되나요?",
+      "푸터 컴포넌트는 외부에서 어떤 데이터를 주입받나요?",
+      "네비게이션 링크가 클릭될 때 어떤 이벤트가 발생하나요?"
+    ]
+  },
+  {
+    "fragment_type": "style",
+    "fragment_path": "src/components/home/FeatureCard.vue",
+    "fragment_summary": "기능 카드의 스타일 정의",
+    "questions": [
+      "FeatureCard의 호버 효과는 어떤 CSS 속성으로 구현되어 있나요?",
+      "아이콘 래퍼의 크기와 색상은 어떻게 정의되어 있나요?",
+      "카드의 그림자 효과는 어떻게 구현되어 있으며, 호버 시 어떻게 변경되나요?"
+    ]
+  },
+  {
+    "fragment_type": "script",
+    "fragment_path": "vue.config.js",
+    "fragment_summary": "Vue CLI 설정 파일",
+    "questions": [
+      "개발 서버의 포트 설정은 어떻게 되어 있나요?",
+      "프로덕션 빌드에서 소스맵 생성은 활성화되어 있나요?",
+      "개발 서버에서 경고와 에러 오버레이 설정은 어떻게 되어 있나요?"
+    ]
+  },
+  {
+    "fragment_type": "component",
+    "fragment_path": "src/components/icons/DeleteIcon.vue",
+    "fragment_summary": "삭제 아이콘 SVG 컴포넌트",
+    "questions": [
+      "삭제 아이콘의 SVG 패스는 어떤 모양을 그리고 있나요?",
+      "이 아이콘 컴포넌트는 어떤 props를 받아들이나요?",
+      "할일 목록에서 이 아이콘은 어떤 이벤트와 연결되어 있나요?"
+    ]
+  },
+  {
+    "fragment_type": "script",
+    "fragment_path": "package.json",
+    "fragment_summary": "프로젝트 패키지 정보 및 의존성",
+    "questions": [
+      "이 Todo 앱에서 사용하는 Vue 버전은 무엇인가요?",
+      "차트 시각화에 사용되는 라이브러리는 무엇인가요?",
+      "고유 ID 생성에 사용되는 라이브러리는 무엇인가요?"
+    ]
+  },
+  {
+    "fragment_type": "template",
+    "fragment_path": "src/App.vue",
+    "fragment_summary": "앱의 루트 템플릿",
+    "questions": [
+      "앱의 전체 레이아웃 구조는 어떻게 구성되어 있나요?",
+      "라우터 뷰는 어디에 위치하고 있나요?",
+      "컨테이너 클래스는 어떤 스타일링을 적용하고 있나요?"
+    ]
+  },
+  {
+    "fragment_type": "script",
+    "fragment_path": "babel.config.js",
+    "fragment_summary": "Babel 설정 파일",
+    "questions": [
+      "이 프로젝트에서 사용하는 Babel 프리셋은 무엇인가요?",
+      "추가적인 Babel 플러그인이 설정되어 있나요?",
+      "Vue 3 지원을 위한 특별한 Babel 설정이 있나요?"
+    ]
+  },
+  {
+    "fragment_type": "component",
+    "fragment_path": "src/components/icons/BarChartIcon.vue",
+    "fragment_summary": "차트 아이콘 SVG 컴포넌트",
+    "questions": [
+      "차트 아이콘은 어떤 종류의 차트를 시각적으로 표현하고 있나요?",
+      "이 아이콘은 앱의 어떤 부분에서 사용되고 있나요?",
+      "SVG 뷰박스 설정은 어떻게 되어 있나요?"
+    ]
+  },
+  {
+    "fragment_type": "style",
+    "fragment_path": "src/views/Settings.vue",
+    "fragment_summary": "설정 화면의 스타일 정의",
+    "questions": [
+      "다크 모드 토글 스위치의 슬라이더는 어떻게 스타일링되어 있나요?",
+      "체크된 상태의 토글 스위치는 어떤 색상으로 표시되나요?",
+      "토글 스위치의 애니메이션 효과는 어떻게 구현되어 있나요?"
+    ]
+  }
+]
