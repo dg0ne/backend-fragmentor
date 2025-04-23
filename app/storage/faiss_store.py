@@ -206,7 +206,8 @@ class FaissVectorStore:
             'name': fragment['name'],
             'file_path': fragment['metadata'].get('file_path', ''),
             'file_name': fragment['metadata'].get('file_name', ''),
-            'content_preview': fragment['content'][:150] + '...' if len(fragment['content']) > 150 else fragment['content']
+            'content_preview': fragment['content'][:150] + '...' if len(fragment['content']) > 150 else fragment['content'],
+            'full_content': fragment['content']
         }
         
         # 타입별 추가 메타데이터
