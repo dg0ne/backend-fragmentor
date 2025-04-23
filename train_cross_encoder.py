@@ -153,17 +153,23 @@ def train_cross_encoder(examples_file, output_dir='./trained_model', model_name=
     training_args = TrainingArguments(
         output_dir=output_dir,
         num_train_epochs=epochs,
-        per_device_train_batch_size=batch_size,
-        per_device_eval_batch_size=batch_size,
-        warmup_steps=100,
+        per_device_train_batch_size=4,  # 배치 크기 감소
+        per_device_eval_batch_size=4,   # 평가 배치 크기도 감소
+        gradient_accumulation_steps=4,  # 그래디언트 누적 (효과적으로 16 배치 크기와 유사)
+        warmup_steps=50,                # 데이터셋 크기를 고려하여 감소
         weight_decay=0.01,
         logging_dir=f"{output_dir}/logs",
-        logging_steps=10,
-        eval_strategy="epoch",  # eval_strategy에서 수정
-        save_strategy="epoch",
+        logging_steps=5,                # 더 자주 로깅
+        evaluation_strategy="steps",    # epoch -> steps로 변경
+        eval_steps=50,                  # 50 스텝마다 평가
+        save_strategy="steps",
+        save_steps=50,
         load_best_model_at_end=True,
         metric_for_best_model="loss",
-        greater_is_better=False
+        greater_is_better=False,
+        fp16=True,                      # 메모리 절약을 위한 fp16 활성화
+        dataloader_num_workers=0,       # 데이터 로더 워커 수 제한
+        disable_tqdm=False,             # 진행 상황 표시
     )
     
     # 트레이너 초기화
