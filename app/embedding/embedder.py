@@ -5,7 +5,7 @@
 import os
 import pickle
 import numpy as np
-from typing import Dict, List, Any, Optional, Union
+from typing import Dict, List, Any, Optional
 from tqdm import tqdm
 from sentence_transformers import SentenceTransformer
 
