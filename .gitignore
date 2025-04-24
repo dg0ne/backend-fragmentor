@@ -15,6 +15,7 @@ lib/
 lib64/
 parts/
 sdist/
+trained_cross_encoder/
 var/
 *.egg-info/
 .installed.cfg

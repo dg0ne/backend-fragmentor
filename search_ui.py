@@ -19,7 +19,7 @@ from app.parser.vue_parser import parse_vue_project
 from app.fragmenter.fragmenter import VueFragmenter
 from app.embedding.embedder import CodeEmbedder
 from app.embedding.cross_encoder import CrossEncoder
-from app.storage.faiss_store_updated import FaissVectorStore
+from app.storage.faiss_store import FaissVectorStore
 
 # 색상 초기화
 colorama.init()
@@ -222,3 +222,63 @@ class CodeSearchShell(cmd.Cmd):
             
         # 유사 결과를 마지막 결과로 업데이트
         self.last_results = similar_results
+    
+    def do_exit(self, arg):
+        """프로그램 종료"""
+        print(f"{Fore.CYAN}프로그램을 종료합니다.{Style.RESET_ALL}")
+        return True
+        
+    def do_quit(self, arg):
+        """프로그램 종료"""
+        return self.do_exit(arg)
+
+# 메인 함수 정의
+def main():
+    parser = argparse.ArgumentParser(description='Vue Todo 코드 검색 인터페이스')
+    parser.add_argument('--data-dir', type=str, default='./data', help='데이터 디렉토리 경로')
+    
+    args = parser.parse_args()
+    
+    # 데이터 디렉토리 확인
+    if not os.path.exists(args.data_dir):
+        print(f"{Fore.YELLOW}경고: 데이터 디렉토리가 존재하지 않습니다: {args.data_dir}{Style.RESET_ALL}")
+        print("데이터 디렉토리를 생성합니다.")
+        os.makedirs(args.data_dir, exist_ok=True)
+    
+
+    try:
+        # 임베더 초기화
+        embedder = CodeEmbedder(model_name='./trained_cross_encoder')
+        
+        # Cross-Encoder 초기화 (있는 경우)
+        cross_encoder = None
+        try:
+            model_path = os.path.abspath('./trained_cross_encoder')
+            cross_encoder = CrossEncoder(model_name=model_path)
+            print(f"{Fore.GREEN}Cross-Encoder 모델 로드 성공 (경로: {model_path}){Style.RESET_ALL}")
+        except Exception as e:
+            print(f"{Fore.YELLOW}Cross-Encoder 모델 로드 실패: {str(e)}{Style.RESET_ALL}")
+            print("재랭킹 기능 없이 계속합니다.")
+        
+        # Faiss 벡터 저장소 초기화
+        vector_store = FaissVectorStore(
+            dimension=embedder.vector_dim,
+            index_type='Cosine',
+            data_dir=args.data_dir,
+            index_name='vue_todo_fragments',
+            cross_encoder=cross_encoder
+        )
+        
+        # 인터페이스 실행
+        shell = CodeSearchShell(vector_store, embedder, cross_encoder)
+        shell.cmdloop()
+    except Exception as e:
+        print(f"{Fore.RED}오류 발생: {str(e)}{Style.RESET_ALL}")
+        import traceback
+        print(traceback.format_exc())
+    
+    return 0
+
+# 메인 함수 실행
+if __name__ == "__main__":
+    sys.exit(main())
