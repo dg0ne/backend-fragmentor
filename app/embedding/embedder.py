@@ -183,13 +183,29 @@ class CodeEmbedder:
                 context_parts.append(f"Components: {', '.join(components)}")
                 
         elif fragment_type == 'template':
-            context_parts.append(f"템플릿 섹션: {metadata.get('component_name', name)}")
+            context_parts.append(f"Vue 템플릿: {metadata.get('component_name', name)}")
             
         elif fragment_type == 'script':
-            context_parts.append(f"스크립트 섹션: {metadata.get('component_name', name)}")
+            context_parts.append(f"Vue 스크립트: {metadata.get('component_name', name)}")
             
         elif fragment_type == 'style':
-            context_parts.append(f"스타일 섹션: {metadata.get('component_name', name)}")
+            context_parts.append(f"Vue 스타일: {metadata.get('component_name', name)}")
+            
+        elif fragment_type == 'javascript':
+            context_parts.append(f"JavaScript 파일: {name}")
+            # 파일명에서 용도 추론
+            if 'store' in name.lower():
+                context_parts.append("상태 관리")
+            elif 'util' in name.lower():
+                context_parts.append("유틸리티 함수")
+            elif 'router' in name.lower():
+                context_parts.append("라우팅")
+                
+        elif fragment_type == 'css':
+            context_parts.append(f"CSS 파일: {name}")
+            
+        elif fragment_type == 'html':
+            context_parts.append(f"HTML 파일: {name}")
         
         # 파일 정보 추가
         if 'file_name' in metadata:

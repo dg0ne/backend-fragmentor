@@ -66,7 +66,7 @@ class VueParser:
                 template = self._extract_template(content)
                 script = self._extract_script(content)
                 style = self._extract_style(content)
-                
+
                 # 컴포넌트 이름 추출
                 component_name = self._extract_component_name(script, file_info['file_name'])
                 
@@ -125,7 +125,7 @@ class VueParser:
         try:
             for root, _, files in os.walk(project_path):
                 for file in files:
-                    if file.endswith('.vue', 'js', 'ts', 'css'):
+                    if file.endswith(('.vue', '.js', '.ts', '.css')):
                         file_path = os.path.join(root, file)
                         
                         # 무시해야 할 파일 건너뛰기

@@ -253,11 +253,21 @@ class FaissVectorStore:
                 elif term in content:
                     score += 1.0
             
-            # 타입별 가중치 부여 (컴포넌트에 우선순위)
+            # 타입별 가중치 부여 (균형있게 조정)
             if fragment_type == 'component':
-                score *= 1.5
+                score *= 1.3  # 컴포넌트 가중치 낮춤
+            elif fragment_type == 'javascript':
+                score *= 1.2  # JavaScript 파일 적절한 가중치
+            elif fragment_type == 'script':
+                score *= 1.2  # Vue 스크립트 섹션도 동일 가중치
             elif fragment_type == 'template':
-                score *= 1.2
+                score *= 1.1  # 템플릿 가중치 조정
+            elif fragment_type == 'css':
+                score *= 0.9  # CSS 파일 낮은 가중치
+            elif fragment_type == 'style':
+                score *= 0.9  # Vue 스타일 섹션 낮은 가중치
+            else:
+                score *= 0.8  # 기타 파일 가장 낮은 가중치
             
             if score > 0:
                 scores[fragment_id] = score

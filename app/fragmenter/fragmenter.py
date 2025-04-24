@@ -13,8 +13,13 @@ class VueFragmenter:
         self.fragment_types = [
             'component',    # Vue 컴포넌트 전체
             'template',     # 템플릿 섹션
-            'script',       # 스크립트 섹션
-            'style'         # 스타일 섹션
+            'script',       # Vue 파일의 스크립트 섹션
+            'style',        # Vue 파일의 스타일 섹션
+            'javascript',   # 독립 JS 파일
+            'css',          # 독립 CSS 파일
+            'html',         # HTML 파일
+            'config',       # 설정 파일 (json, yaml 등)
+            'generic'       # 기타 파일
         ]
     
     def fragment_file(self, parsed_file: Dict[str, Any]) -> List[Dict[str, Any]]:
@@ -122,19 +127,18 @@ class VueFragmenter:
         return fragments
 
     def _fragment_js_file(self, parsed_file: Dict[str, Any]) -> List[Dict[str, Any]]:
-        """JS 파일 전체를 하나의 파편으로 처리"""
+        """JS 파일을 javascript 타입으로 파편화"""
         fragments = []
         file_info = parsed_file['file_info']
         
         js_fragment = self._create_fragment(
             fragment_id=str(uuid.uuid4()),
-            fragment_type='script',
+            fragment_type='javascript',  # 'script' 대신 'javascript' 사용
             name=file_info['file_name'],
             content=parsed_file['raw_content'],
             metadata={
                 'file_path': file_info['file_path'],
                 'file_name': file_info['file_name'],
-                'file_type': 'javascript',
                 'extension': file_info['extension']
             }
         )
@@ -142,19 +146,18 @@ class VueFragmenter:
         return fragments
 
     def _fragment_css_file(self, parsed_file: Dict[str, Any]) -> List[Dict[str, Any]]:
-        """CSS 파일 전체를 하나의 파편으로 처리"""
+        """CSS 파일을 css 타입으로 파편화"""
         fragments = []
         file_info = parsed_file['file_info']
         
         css_fragment = self._create_fragment(
             fragment_id=str(uuid.uuid4()),
-            fragment_type='style',
+            fragment_type='css',  # 'style' 대신 'css' 사용
             name=file_info['file_name'],
             content=parsed_file['raw_content'],
             metadata={
                 'file_path': file_info['file_path'],
                 'file_name': file_info['file_name'],
-                'file_type': 'css',
                 'extension': file_info['extension']
             }
         )
