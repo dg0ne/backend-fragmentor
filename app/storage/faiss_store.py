@@ -484,7 +484,7 @@ class FaissVectorStore:
         # filters에서 앙상블과 재랭킹 관련 옵션 추출
         ensemble_weight = 0.5  # 기본값
         query_text = None
-        candidate_k = k * 3 if rerank else k  # 재랭킹 시 더 많은 후보 검색
+        candidate_k = k * 6 if rerank else k  # 재랭킹 시 더 많은 후보 검색
         
         if filters and 'query_text' in filters:
             query_text = filters.pop('query_text')
