@@ -1,195 +1,319 @@
+#!/usr/bin/env python
 """
-Backend-Fragmentor 메인 애플리케이션
-React 코드 파편화 및 벡터화 서비스
+FastAPI 기반 코드 검색 API 서버
+중복 제거 로직이 포함된 검색 엔드포인트 구현
 """
 
 import os
-import argparse
-from fastapi import FastAPI, HTTPException, BackgroundTasks
-from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+import sys
+import time
+import json
 from typing import Dict, List, Any, Optional
+from fastapi import FastAPI, HTTPException, Query
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel, Field
 
-from app.parser.vue_parser import parse_react_project
-from app.fragmentation.fragmenter import ReactFragmenter
-from app.embedding.engine import CodeEmbedder
-from app.services.analyzer import SourceCodeAnalyzer
-from app.services.indexing import IndexingService
-from app.core.config import settings
+# 상대 경로 import를 위한 경로 추가
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-# FastAPI 애플리케이션 초기화
+from app.parser.vue_parser import parse_vue_project
+from app.fragmenter.fragmenter import VueFragmenter
+from app.embedding.embedder import CodeEmbedder
+from app.embedding.cross_encoder import CrossEncoder
+from app.storage.faiss_store import FaissVectorStore
+
+# FastAPI 앱 생성
 app = FastAPI(
-    title="Backend-Fragmentor",
-    description="소스 코드 분석 및 분절화 서비스",
-    version="0.1.0"
+    title="Code Search API",
+    description="코드 검색 API with 중복 제거 기능",
+    version="1.0.0"
 )
 
-# CORS 설정
+# CORS 미들웨어 추가
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # 프로덕션에서는 실제 도메인으로 제한
+    allow_origins=["*"],  # 개발 환경에서는 모든 origin 허용
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# 서비스 인스턴스 초기화
-analyzer = SourceCodeAnalyzer()
-indexing_service = IndexingService()
+# 전역 변수로 서비스 인스턴스 관리
+vector_store = None
+embedder = None
+cross_encoder = None
 
-# 작업 상태 저장소
-jobs_status = {}
+# Pydantic 모델 정의
+class SearchRequest(BaseModel):
+    query: str = Field(..., description="검색 쿼리")
+    k: int = Field(5, description="반환할 결과 수", ge=1, le=20)
+    rerank: bool = Field(True, description="Cross-Encoder 재랭킹 여부")
+    filters: Optional[Dict[str, Any]] = Field(None, description="검색 필터")
+    ensemble_weight: float = Field(0.5, description="앙상블 가중치", ge=0.0, le=1.0)
 
-# 모델 정의
-class ProjectRequest(BaseModel):
-    project_path: str
-    options: Optional[Dict[str, Any]] = None
-
-class JobStatusResponse(BaseModel):
-    job_id: str
-    status: str
-    progress: float
-    message: Optional[str] = None
-
-@app.get("/")
-def read_root():
-    return {"message": "Backend-Fragmentor API 서비스"}
-
-@app.post("/api/collect", response_model=Dict[str, str])
-async def collect_source_code(project: ProjectRequest, background_tasks: BackgroundTasks):
-    """소스 코드 수집 및 파싱 요청"""
-    job_id = f"job_{os.urandom(4).hex()}"
+class FragmentResult(BaseModel):
+    id: str
+    score: float
+    cross_score: Optional[float] = None
+    type: str
+    name: str
+    file_path: str
+    relative_path: str  # 상대 경로 추가
+    file_name: str
+    content_preview: str
+    component_name: Optional[str] = None
     
-    # 작업 상태 초기화
-    jobs_status[job_id] = {
-        "status": "pending",
-        "progress": 0.0,
-        "message": "작업 초기화 중"
-    }
+class SearchResponse(BaseModel):
+    query: str
+    total_results: int
+    elapsed_time: float
+    reranked: bool
+    results: List[FragmentResult]
+
+def deduplicate_results(results: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """
+    검색 결과에서 중복을 제거하는 함수
+    Vue 파일의 component가 있으면 해당 파일의 template, script, style 파편 제거
     
-    # 백그라운드 작업으로 소스 코드 수집 실행
-    background_tasks.add_task(
-        indexing_service.process_project,
-        project.project_path,
-        job_id,
-        jobs_status,
-        project.options
+    Args:
+        results: 원본 검색 결과 리스트
+        
+    Returns:
+        중복이 제거된 결과 리스트
+    """
+    # 파일별로 결과를 그룹화
+    file_fragments = {}
+    
+    # 결과를 파일 경로별로 그룹화
+    for result in results:
+        file_path = result['file_path']
+        if file_path not in file_fragments:
+            file_fragments[file_path] = []
+        file_fragments[file_path].append(result)
+    
+    # 중복 제거된 결과
+    deduplicated_results = []
+    
+    # 각 파일에 대해 처리
+    for file_path, fragments in file_fragments.items():
+        # Vue 파일인 경우 특별 처리
+        if file_path.endswith('.vue'):
+            # 해당 파일의 component 파편이 있는지 확인
+            component_fragment = None
+            other_fragments = []
+            
+            for fragment in fragments:
+                if fragment['type'] == 'component':
+                    # component 파편이 있으면 가장 높은 점수의 것을 선택
+                    if component_fragment is None or fragment['score'] > component_fragment['score']:
+                        component_fragment = fragment
+                else:
+                    other_fragments.append(fragment)
+            
+            # component 파편이 있으면 그것만 추가
+            if component_fragment:
+                deduplicated_results.append(component_fragment)
+            else:
+                # component 파편이 없으면 모든 파편 추가
+                deduplicated_results.extend(other_fragments)
+        else:
+            # Vue 파일이 아닌 경우 모든 파편 추가
+            deduplicated_results.extend(fragments)
+    
+    # 최종 점수로 정렬 (cross_score가 있으면 우선, 없으면 score 사용)
+    deduplicated_results.sort(
+        key=lambda x: x.get('cross_score', x['score']), 
+        reverse=True
     )
     
-    return {"job_id": job_id}
+    return deduplicated_results
 
-@app.get("/api/status/{job_id}", response_model=JobStatusResponse)
-async def get_job_status(job_id: str):
-    """작업 상태 확인"""
-    if job_id not in jobs_status:
-        raise HTTPException(status_code=404, detail="작업을 찾을 수 없습니다")
+@app.on_event("startup")
+async def startup_event():
+    """서버 시작 시 자원 초기화"""
+    global vector_store, embedder, cross_encoder
     
-    job_status = jobs_status[job_id]
+    data_dir = os.getenv("DATA_DIR", "./data")
+    
+    # 임베더 초기화
+    embedder = CodeEmbedder(model_name='jhgan/ko-sroberta-multitask')
+    
+    # Cross-Encoder 초기화
+    try:
+        model_path = os.path.abspath('./trained_cross_encoder')
+        cross_encoder = CrossEncoder(model_name=model_path)
+        print(f"Cross-Encoder 모델 로드 성공 (경로: {model_path})")
+    except Exception as e:
+        print(f"Cross-Encoder 모델 로드 실패: {str(e)}")
+        cross_encoder = None
+    
+    # Faiss 벡터 저장소 초기화
+    vector_store = FaissVectorStore(
+        dimension=embedder.vector_dim,
+        index_type='Cosine',
+        data_dir=data_dir,
+        index_name='vue_todo_fragments',
+        cross_encoder=cross_encoder
+    )
+    
+    print(f"서버 초기화 완료 - 벡터 수: {vector_store.index.ntotal}")
+
+@app.get("/")
+async def root():
+    """API 상태 확인"""
     return {
-        "job_id": job_id,
-        "status": job_status["status"],
-        "progress": job_status["progress"],
-        "message": job_status.get("message")
+        "status": "ok",
+        "service": "Code Search API",
+        "version": "1.0.0",
+        "vector_count": vector_store.index.ntotal if vector_store else 0,
+        "cross_encoder_enabled": cross_encoder is not None
     }
 
-@app.post("/api/fragment")
-async def fragment_code(code: str, options: Optional[Dict[str, Any]] = None):
-    """코드 조각 파편화 및 임베딩 생성"""
-    try:
-        result = analyzer.fragment_code(code, options)
-        return result
-    except Exception as e:
-        logger.error(f"코드 파편화 오류: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"파편화 처리 중 오류 발생: {str(e)}")
+@app.post("/search", response_model=SearchResponse)
+async def search_code(request: SearchRequest):
+    """
+    코드 검색 API 엔드포인트
+    
+    Args:
+        request: 검색 요청 정보
+        
+    Returns:
+        검색 결과 (중복 제거됨)
+    """
+    if not vector_store or not embedder:
+        raise HTTPException(status_code=503, detail="서비스 초기화되지 않음")
+    
+    start_time = time.time()
+    
+    # 검색 쿼리 임베딩 생성
+    query_embedding = embedder.model.encode(request.query)
+    
+    # 필터 설정
+    filters = request.filters or {}
+    filters['query_text'] = request.query
+    filters['ensemble_weight'] = request.ensemble_weight
+    filters['rerank'] = request.rerank and cross_encoder is not None
+    
+    # 검색 실행 (k를 2배로 늘려서 중복 제거 후에도 충분한 결과가 남도록 함)
+    search_k = request.k * 2
+    results = vector_store.search(
+        query_vector=query_embedding,
+        k=search_k,
+        filters=filters,
+        rerank=request.rerank and cross_encoder is not None
+    )
+    
+    # 중복 제거
+    deduplicated_results = deduplicate_results(results)
+    
+    # 요청한 k개로 제한
+    final_results = deduplicated_results[:request.k]
+    
+    elapsed_time = time.time() - start_time
+    
+    # 상대 경로 추가
+    for result in final_results:
+        # file_path에서 todo-web 이후의 경로만 추출
+        full_path = result['file_path']
+        try:
+            todo_web_index = full_path.index('todo-web')
+            relative_path = full_path[todo_web_index:]
+        except ValueError:
+            # todo-web이 없는 경우 전체 경로 사용
+            relative_path = full_path
+        result['relative_path'] = relative_path
+    
+    # 응답 형식으로 변환
+    fragment_results = [
+        FragmentResult(**result) for result in final_results
+    ]
+    
+    return SearchResponse(
+        query=request.query,
+        total_results=len(final_results),
+        elapsed_time=elapsed_time,
+        reranked=request.rerank and cross_encoder is not None,
+        results=fragment_results
+    )
 
-@app.get("/api/fragments/{fragment_id}")
-async def get_fragment(fragment_id: str):
-    """특정 파편 조회"""
-    try:
-        fragment = indexing_service.get_fragment(fragment_id)
-        if not fragment:
-            raise HTTPException(status_code=404, detail="파편을 찾을 수 없습니다")
-        return fragment
-    except Exception as e:
-        logger.error(f"파편 조회 오류: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"파편 조회 중 오류 발생: {str(e)}")
-
-@app.get("/api/stats")
+@app.get("/stats")
 async def get_stats():
-    """벡터 DB 통계 조회"""
-    try:
-        stats = indexing_service.get_stats()
-        return stats
-    except Exception as e:
-        logger.error(f"통계 조회 오류: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"통계 조회 중 오류 발생: {str(e)}")
-
-@app.post("/api/reset")
-async def reset_database():
-    """벡터 DB 초기화 (개발용)"""
-    try:
-        indexing_service.reset_database()
-        return {"message": "데이터베이스가 초기화되었습니다"}
-    except Exception as e:
-        logger.error(f"DB 초기화 오류: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"DB 초기화 중 오류 발생: {str(e)}")
-
-def run_standalone():
-    """
-    스크립트로 직접 실행 시 작동하는 함수
-    """
-    parser = argparse.ArgumentParser(description='React 코드 파편화 및 벡터화 서비스')
-    parser.add_argument('--project', type=str, help='React 프로젝트 디렉토리 경로')
-    parser.add_argument('--data-dir', type=str, default='./data', help='데이터 저장 디렉토리')
-    parser.add_argument('--search', action='store_true', help='대화형 검색 모드 실행')
-    parser.add_argument('--query', type=str, help='단일 검색 쿼리 실행')
+    """벡터 저장소 통계 정보"""
+    if not vector_store:
+        raise HTTPException(status_code=503, detail="서비스 초기화되지 않음")
     
-    args = parser.parse_args()
+    return vector_store.get_stats()
+
+@app.get("/fragment/{fragment_id}")
+async def get_fragment(fragment_id: str):
+    """특정 파편 상세 정보 조회"""
+    if not vector_store:
+        raise HTTPException(status_code=503, detail="서비스 초기화되지 않음")
     
-    # 프로젝트 처리 로직
-    if args.project:
-        logger.info(f"프로젝트 경로: {args.project}")
-        if not os.path.exists(args.project):
-            logger.error(f"프로젝트 경로를 찾을 수 없습니다: {args.project}")
-            return
-            
-        # 프로젝트 처리
-        job_id = f"job_{os.urandom(4).hex()}"
-        jobs_status[job_id] = {
-            "status": "running",
-            "progress": 0.0,
-            "message": "작업 시작"
-        }
+    metadata = vector_store.fragment_metadata.get(fragment_id)
+    if not metadata:
+        raise HTTPException(status_code=404, detail="파편을 찾을 수 없음")
+    
+    return {
+        "id": fragment_id,
+        "metadata": metadata
+    }
+
+@app.get("/similar/{fragment_id}")
+async def get_similar_fragments(
+    fragment_id: str, 
+    k: int = Query(5, ge=1, le=20),
+    rerank: bool = Query(False)
+):
+    """특정 파편과 유사한 파편 검색"""
+    if not vector_store:
+        raise HTTPException(status_code=503, detail="서비스 초기화되지 않음")
+    
+    # 기본 유사 파편 검색
+    similar_results = vector_store.get_similar_fragments(fragment_id, k=k*2)
+    
+    if not similar_results:
+        raise HTTPException(status_code=404, detail="유사한 파편을 찾을 수 없음")
+    
+    # 재랭킹 적용
+    if rerank and cross_encoder:
+        current_metadata = vector_store.fragment_metadata.get(fragment_id, {})
+        current_content = current_metadata.get('content_preview', '')
         
-        result = indexing_service.process_project(
-            args.project, 
-            job_id, 
-            jobs_status, 
-            {"data_dir": args.data_dir}
+        similar_results = cross_encoder.rerank(
+            query=current_content,
+            passages=similar_results,
+            top_k=k*2
         )
-        
-        # 검색 모드
-        if args.search or args.query:
-            try:
-                from app.services.search import SearchService
-                search_service = SearchService(data_dir=args.data_dir)
-                
-                if args.query:
-                    # 단일 쿼리 검색
-                    results = search_service.search(args.query)
-                    for i, result in enumerate(results):
-                        print(f"[{i+1}] {result['name']} ({result['type']}) - 유사도: {result['score']:.4f}")
-                        print(f"  파일: {result['file_name']}")
-                        print(f"  {result['content_preview'][:100]}...")
-                else:
-                    # 대화형 검색
-                    search_service.run_interactive_search()
-            except ImportError:
-                logger.error("검색 서비스를 불러올 수 없습니다.")
+    
+    # 중복 제거
+    deduplicated_results = deduplicate_results(similar_results)
+    
+    # 요청한 k개로 제한
+    final_results = deduplicated_results[:k]
+    
+    return {
+        "fragment_id": fragment_id,
+        "similar_fragments": final_results,
+        "reranked": rerank and cross_encoder is not None
+    }
+
+@app.get("/file-fragments")
+async def get_fragments_by_file(file_path: str):
+    """특정 파일의 모든 파편 조회"""
+    if not vector_store:
+        raise HTTPException(status_code=503, detail="서비스 초기화되지 않음")
+    
+    results = vector_store.get_fragments_by_file(file_path)
+    
+    if not results:
+        raise HTTPException(status_code=404, detail="파일을 찾을 수 없음")
+    
+    return {
+        "file_path": file_path,
+        "fragments": results
+    }
 
 if __name__ == "__main__":
-    # 스크립트로 직접 실행된 경우
-    run_standalone()
-else:
-    # 모듈로 임포트된 경우 (FastAPI에서 사용)
-    pass
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)
