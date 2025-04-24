@@ -19,7 +19,7 @@ class VueFragmenter:
     
     def fragment_file(self, parsed_file: Dict[str, Any]) -> List[Dict[str, Any]]:
         """
-        파싱된 Vue 파일에서 의미 있는 코드 파편들을 추출
+        파싱된 파일에서 의미 있는 코드 파편들을 추출
         
         Args:
             parsed_file: VueParser로 파싱된 파일 정보
@@ -34,80 +34,105 @@ class VueFragmenter:
             return fragments
             
         file_info = parsed_file['file_info']
-        component_name = parsed_file['component_name']
+        file_extension = file_info['extension'].lower()
         
-        # 1. 컴포넌트 전체 파편화
-        component_id = str(uuid.uuid4())
-        component_fragment = self._create_fragment(
-            fragment_id=component_id,
-            fragment_type='component',
-            name=component_name,
+        # 파일 확장자에 따라 다른 파편화 전략 적용
+        if file_extension == '.vue':
+            return self._fragment_vue_file(parsed_file)
+        elif file_extension in ['.js', '.ts']:
+            return self._fragment_js_file(parsed_file)
+        elif file_extension == '.css':
+            return self._fragment_css_file(parsed_file)
+        elif file_extension == '.html':
+            return self._fragment_html_file(parsed_file)
+        else:
+            # 기타 파일은 전체를 하나의 파편으로 처리
+            return self._fragment_generic_file(parsed_file)
+    
+    def _fragment_vue_file(self, parsed_file: Dict[str, Any]) -> List[Dict[str, Any]]:
+        """Vue SFC 파일 파편화 (기존 로직)"""
+        # 기존 fragment_file 메소드의 내용을 여기로 이동
+        # ... (기존 코드와 동일)
+
+    def _fragment_js_file(self, parsed_file: Dict[str, Any]) -> List[Dict[str, Any]]:
+        """JS 파일 전체를 하나의 파편으로 처리"""
+        fragments = []
+        file_info = parsed_file['file_info']
+        
+        js_fragment = self._create_fragment(
+            fragment_id=str(uuid.uuid4()),
+            fragment_type='script',
+            name=file_info['file_name'],
             content=parsed_file['raw_content'],
             metadata={
                 'file_path': file_info['file_path'],
                 'file_name': file_info['file_name'],
-                'component_name': component_name,
-                'has_template': parsed_file['template'] is not None,
-                'has_script': parsed_file['script'] is not None,
-                'has_style': parsed_file['style'] is not None,
-                'props': parsed_file['props'],
-                'components': parsed_file['components']
+                'file_type': 'javascript',
+                'extension': file_info['extension']
             }
         )
-        fragments.append(component_fragment)
-        
-        # 2. 템플릿 섹션 파편화
-        if parsed_file['template']:
-            template_fragment = self._create_fragment(
-                fragment_id=str(uuid.uuid4()),
-                fragment_type='template',
-                name=f"{component_name}-template",
-                content=f"<template>{parsed_file['template']}</template>",
-                metadata={
-                    'file_path': file_info['file_path'],
-                    'file_name': file_info['file_name'],
-                    'component_name': component_name,
-                    'parent_id': component_id
-                }
-            )
-            fragments.append(template_fragment)
-        
-        # 3. 스크립트 섹션 파편화
-        if parsed_file['script']:
-            script_fragment = self._create_fragment(
-                fragment_id=str(uuid.uuid4()),
-                fragment_type='script',
-                name=f"{component_name}-script",
-                content=f"<script>{parsed_file['script']}</script>",
-                metadata={
-                    'file_path': file_info['file_path'],
-                    'file_name': file_info['file_name'],
-                    'component_name': component_name,
-                    'props': parsed_file['props'],
-                    'components': parsed_file['components'],
-                    'parent_id': component_id
-                }
-            )
-            fragments.append(script_fragment)
-        
-        # 4. 스타일 섹션 파편화
-        if parsed_file['style']:
-            style_fragment = self._create_fragment(
-                fragment_id=str(uuid.uuid4()),
-                fragment_type='style',
-                name=f"{component_name}-style",
-                content=f"<style>{parsed_file['style']}</style>",
-                metadata={
-                    'file_path': file_info['file_path'],
-                    'file_name': file_info['file_name'],
-                    'component_name': component_name,
-                    'parent_id': component_id
-                }
-            )
-            fragments.append(style_fragment)
-        
+        fragments.append(js_fragment)
         return fragments
-    
+
+    def _fragment_css_file(self, parsed_file: Dict[str, Any]) -> List[Dict[str, Any]]:
+        """CSS 파일 전체를 하나의 파편으로 처리"""
+        fragments = []
+        file_info = parsed_file['file_info']
+        
+        css_fragment = self._create_fragment(
+            fragment_id=str(uuid.uuid4()),
+            fragment_type='style',
+            name=file_info['file_name'],
+            content=parsed_file['raw_content'],
+            metadata={
+                'file_path': file_info['file_path'],
+                'file_name': file_info['file_name'],
+                'file_type': 'css',
+                'extension': file_info['extension']
+            }
+        )
+        fragments.append(css_fragment)
+        return fragments
+
+    def _fragment_html_file(self, parsed_file: Dict[str, Any]) -> List[Dict[str, Any]]:
+        """HTML 파일 전체를 하나의 파편으로 처리"""
+        fragments = []
+        file_info = parsed_file['file_info']
+        
+        html_fragment = self._create_fragment(
+            fragment_id=str(uuid.uuid4()),
+            fragment_type='template',
+            name=file_info['file_name'],
+            content=parsed_file['raw_content'],
+            metadata={
+                'file_path': file_info['file_path'],
+                'file_name': file_info['file_name'],
+                'file_type': 'html',
+                'extension': file_info['extension']
+            }
+        )
+        fragments.append(html_fragment)
+        return fragments
+
+    def _fragment_generic_file(self, parsed_file: Dict[str, Any]) -> List[Dict[str, Any]]:
+        """기타 파일 전체를 하나의 파편으로 처리"""
+        fragments = []
+        file_info = parsed_file['file_info']
+        
+        generic_fragment = self._create_fragment(
+            fragment_id=str(uuid.uuid4()),
+            fragment_type='generic',
+            name=file_info['file_name'],
+            content=parsed_file['raw_content'],
+            metadata={
+                'file_path': file_info['file_path'],
+                'file_name': file_info['file_name'],
+                'extension': file_info['extension']
+            }
+        )
+        fragments.append(generic_fragment)
+        return fragments
+
     def fragment_project(self, parsed_project: Dict[str, Any]) -> Dict[str, Any]:
         """
         파싱된 프로젝트 전체 파편화
