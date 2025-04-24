@@ -50,9 +50,76 @@ class VueFragmenter:
             return self._fragment_generic_file(parsed_file)
     
     def _fragment_vue_file(self, parsed_file: Dict[str, Any]) -> List[Dict[str, Any]]:
-        """Vue SFC 파일 파편화 (기존 로직)"""
-        # 기존 fragment_file 메소드의 내용을 여기로 이동
-        # ... (기존 코드와 동일)
+        """Vue SFC 파일 파편화"""
+        fragments = []
+        file_info = parsed_file['file_info']
+        component_name = parsed_file.get('component_name', 
+                                    file_info['file_name'].replace('.vue', ''))
+        
+        # 1. 컴포넌트 전체 파편
+        component_fragment = self._create_fragment(
+            fragment_id=str(uuid.uuid4()),
+            fragment_type='component',
+            name=component_name,
+            content=parsed_file['raw_content'],
+            metadata={
+                'file_path': file_info['file_path'],
+                'file_name': file_info['file_name'],
+                'component_name': component_name,
+                'props': parsed_file.get('props', []),
+                'components': parsed_file.get('components', [])
+            }
+        )
+        fragments.append(component_fragment)
+        
+        # 2. 템플릿 섹션 파편화
+        if parsed_file.get('template'):
+            template_fragment = self._create_fragment(
+                fragment_id=str(uuid.uuid4()),
+                fragment_type='template',
+                name=f"{component_name}_template",
+                content=parsed_file['template'],
+                metadata={
+                    'component_name': component_name,
+                    'file_path': file_info['file_path'],
+                    'file_name': file_info['file_name']
+                }
+            )
+            fragments.append(template_fragment)
+        
+        # 3. 스크립트 섹션 파편화
+        if parsed_file.get('script'):
+            script_fragment = self._create_fragment(
+                fragment_id=str(uuid.uuid4()),
+                fragment_type='script',
+                name=f"{component_name}_script",
+                content=parsed_file['script'],
+                metadata={
+                    'component_name': component_name,
+                    'file_path': file_info['file_path'],
+                    'file_name': file_info['file_name'],
+                    'props': parsed_file.get('props', []),
+                    'components': parsed_file.get('components', [])
+                }
+            )
+            fragments.append(script_fragment)
+        
+        # 4. 스타일 섹션 파편화
+        if parsed_file.get('style'):
+            style_fragment = self._create_fragment(
+                fragment_id=str(uuid.uuid4()),
+                fragment_type='style',
+                name=f"{component_name}_style",
+                content=parsed_file['style'],
+                metadata={
+                    'component_name': component_name,
+                    'file_path': file_info['file_path'],
+                    'file_name': file_info['file_name']
+                }
+            )
+            fragments.append(style_fragment)
+        
+        return fragments
 
     def _fragment_js_file(self, parsed_file: Dict[str, Any]) -> List[Dict[str, Any]]:
         """JS 파일 전체를 하나의 파편으로 처리"""
@@ -165,6 +232,34 @@ class VueFragmenter:
             # 기타 파일은 전체를 하나의 파편으로 처리
             return self._fragment_generic_file(parsed_file)
     
+    def fragment_project(self, parsed_project: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        프로젝트 전체의 코드를 파편화
+        
+        Args:
+            parsed_project: VueParser로 파싱된 프로젝트 정보
+            
+        Returns:
+            Dict: 파편화 결과 및 통계
+        """
+        all_fragments = []
+        file_fragment_counts = {}
+        
+        # 파싱된 파일별로 파편화 수행
+        for file_path, parsed_file in parsed_project['parsed_files'].items():
+            fragments = self.fragment_file(parsed_file)
+            all_fragments.extend(fragments)
+            file_fragment_counts[file_path] = len(fragments)
+        
+        # 통계 계산
+        fragment_stats = self._calculate_fragment_stats(all_fragments)
+        fragment_stats['by_file'] = file_fragment_counts
+        
+        return {
+            'fragments': all_fragments,
+            'fragment_stats': fragment_stats
+        }
+
     def _create_fragment(self, 
                         fragment_id: str,
                         fragment_type: str,

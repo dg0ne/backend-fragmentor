@@ -38,13 +38,7 @@ class VueParser:
     
     def parse_file(self, file_path: str) -> Dict[str, Any]:
         """
-        Vue 파일을 파싱하여 구조화된 정보 추출
-        
-        Args:
-            file_path: 파싱할 파일 경로
-            
-        Returns:
-            Dict: 파싱 결과와 메타데이터를 포함한 딕셔너리
+        파일을 파싱하여 구조화된 정보 추출
         """
         if not os.path.exists(file_path):
             return {
@@ -68,32 +62,39 @@ class VueParser:
             file_info = self._extract_file_info(file_path)
             
             # Vue 컴포넌트 섹션별 추출
-            template = self._extract_template(content)
-            script = self._extract_script(content)
-            style = self._extract_style(content)
-            
-            # 컴포넌트 이름 추출
-            component_name = self._extract_component_name(script, file_info['file_name'])
-            
-            # Props 추출
-            props = self._extract_props(script)
-            
-            # Components 추출
-            components = self._extract_components(script)
-            
-            # 결과 조합
-            result = {
-                'file_info': file_info,
-                'component_name': component_name,
-                'template': template,
-                'script': script,
-                'style': style,
-                'props': props,
-                'components': components,
-                'raw_content': content
-            }
-            
-            return result
+            if file_path.endswith('.vue'):
+                template = self._extract_template(content)
+                script = self._extract_script(content)
+                style = self._extract_style(content)
+                
+                # 컴포넌트 이름 추출
+                component_name = self._extract_component_name(script, file_info['file_name'])
+                
+                # Props 추출
+                props = self._extract_props(script)
+                
+                # Components 추출
+                components = self._extract_components(script)
+                
+                # 결과 조합
+                result = {
+                    'file_info': file_info,
+                    'component_name': component_name,
+                    'template': template,
+                    'script': script,
+                    'style': style,
+                    'props': props,
+                    'components': components,
+                    'raw_content': content
+                }
+                
+                return result
+            else:
+                # JS/TS/기타 파일은 전체 내용을 저장
+                return {
+                    'file_info': file_info,
+                    'raw_content': content  
+                }
             
         except Exception as e:
             return {
@@ -124,7 +125,7 @@ class VueParser:
         try:
             for root, _, files in os.walk(project_path):
                 for file in files:
-                    if file.endswith('.vue'):
+                    if file.endswith('.vue', 'js', 'ts', 'css'):
                         file_path = os.path.join(root, file)
                         
                         # 무시해야 할 파일 건너뛰기
