@@ -139,7 +139,7 @@ backend-fragmentor/
 ```json
 {
   "id": "unique-fragment-id",
-  "vector": [0.1, 0.2, ..., 0.768],  // 임베딩 벡터
+  "vector": [0.1, 0.2, ..., 0.1024],  // 임베딩 벡터
   "payload": {
     "content": "public void processPayment(Order order) {...}",
     "language": "java",
