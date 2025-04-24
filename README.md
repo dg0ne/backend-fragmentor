@@ -81,6 +81,18 @@ python search_ui.py --data-dir ./custom-data-dir
 python train_cross_encoder.py --examples cross_encoding.json --output-dir ./trained_cross_encoder --test
 ```
 
+### 4. 추가 파인튜닝(필요시)
+
+
+```bash
+# Cross-Encoder 모델 파인튜닝
+python train_cross_encoder.py --examples cross_encoding.json --output-dir ./trained_cross_encoder --test
+
+# 커스텀 설정 실행
+python continue_training.py --examples my_custom_data.json --checkpoint 282 --epochs 2
+```
+
+
 ## 검색 쿼리 예시
 
 대화형 검색 모드에서 사용할 수 있는 예시 명령어:

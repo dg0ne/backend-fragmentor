@@ -185,22 +185,12 @@ class CodeEmbedder:
         elif fragment_type == 'template':
             context_parts.append(f"Vue 템플릿: {metadata.get('component_name', name)}")
             
-        elif fragment_type == 'script':
+        elif fragment_type == 'script' or fragment_type == 'javascript':  # JavaScript 파일도 script로 처리
             context_parts.append(f"Vue 스크립트: {metadata.get('component_name', name)}")
             
         elif fragment_type == 'style':
             context_parts.append(f"Vue 스타일: {metadata.get('component_name', name)}")
             
-        elif fragment_type == 'javascript':
-            context_parts.append(f"JavaScript 파일: {name}")
-            # 파일명에서 용도 추론
-            if 'store' in name.lower():
-                context_parts.append("상태 관리")
-            elif 'util' in name.lower():
-                context_parts.append("유틸리티 함수")
-            elif 'router' in name.lower():
-                context_parts.append("라우팅")
-                
         elif fragment_type == 'css':
             context_parts.append(f"CSS 파일: {name}")
             
