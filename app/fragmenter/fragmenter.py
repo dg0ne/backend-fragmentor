@@ -133,38 +133,37 @@ class VueFragmenter:
         fragments.append(generic_fragment)
         return fragments
 
-    def fragment_project(self, parsed_project: Dict[str, Any]) -> Dict[str, Any]:
+    def fragment_file(self, parsed_file: Dict[str, Any]) -> List[Dict[str, Any]]:
         """
-        파싱된 프로젝트 전체 파편화
+        파싱된 파일에서 의미 있는 코드 파편들을 추출
         
         Args:
-            parsed_project: parse_vue_project()로 파싱된 프로젝트 정보
+            parsed_file: VueParser로 파싱된 파일 정보
             
         Returns:
-            Dict: 파편화 결과와 메타데이터
+            List[Dict]: 추출된 코드 파편 목록
         """
-        all_fragments = []
-        file_stats = {}
+        fragments = []
         
-        # 각 파일별로 파편화
-        for file_path, parsed_file in parsed_project['parsed_files'].items():
-            file_fragments = self.fragment_file(parsed_file)
-            all_fragments.extend(file_fragments)
+        # 무시된 파일이거나 파싱 오류가 있는 경우 처리
+        if parsed_file.get('ignored', False) or 'error' in parsed_file:
+            return fragments
             
-            # 파일별 통계
-            file_stats[file_path] = {
-                'fragments_count': len(file_fragments),
-                'types': self._count_fragment_types(file_fragments)
-            }
+        file_info = parsed_file['file_info']
+        file_extension = file_info['extension'].lower()
         
-        # 전체 파편 통계
-        fragment_stats = self._calculate_fragment_stats(all_fragments)
-        
-        return {
-            'fragments': all_fragments,
-            'file_stats': file_stats,
-            'fragment_stats': fragment_stats
-        }
+        # 파일 확장자에 따라 다른 파편화 전략 적용
+        if file_extension == '.vue':
+            return self._fragment_vue_file(parsed_file)
+        elif file_extension in ['.js', '.ts']:
+            return self._fragment_js_file(parsed_file)
+        elif file_extension == '.css':
+            return self._fragment_css_file(parsed_file)
+        elif file_extension == '.html':
+            return self._fragment_html_file(parsed_file)
+        else:
+            # 기타 파일은 전체를 하나의 파편으로 처리
+            return self._fragment_generic_file(parsed_file)
     
     def _create_fragment(self, 
                         fragment_id: str,
