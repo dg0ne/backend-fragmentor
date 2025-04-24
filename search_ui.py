@@ -248,7 +248,7 @@ def main():
 
     try:
         # 임베더 초기화
-        embedder = CodeEmbedder(model_name='jhgan/ko-sroberta-multitask')
+        embedder = CodeEmbedder(model_name='dragonkue/BGE-m3-ko')
         
         # Cross-Encoder 초기화 (있는 경우)
         cross_encoder = None

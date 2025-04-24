@@ -23,6 +23,8 @@
 
 ---
 
+dragonkue/BGE-m3-ko 로 변경중...
+
 ## ✅ 참고 요약
 
 - Vue에 특화된 Bi-Encoder 모델: **`jhgan/ko-sroberta-multitask`**

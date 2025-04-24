@@ -136,7 +136,7 @@ async def startup_event():
     data_dir = os.getenv("DATA_DIR", "./data")
     
     # 임베더 초기화
-    embedder = CodeEmbedder(model_name='jhgan/ko-sroberta-multitask')
+    embedder = CodeEmbedder(model_name='dragonkue/BGE-m3-ko')
     
     # Cross-Encoder 초기화
     try:
