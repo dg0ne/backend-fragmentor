@@ -220,6 +220,7 @@ class FaissVectorStore:
         
         return metadata
     
+    # 키워드 기반 검색
     def _keyword_search(self, query: str, k: int = 20) -> List[Dict[str, Any]]:
         """
         키워드 기반 검색 구현
@@ -352,30 +353,170 @@ class FaissVectorStore:
                 
         return results
 
-    def _ensemble_results(self, vector_results: List[Dict], keyword_results: List[Dict], 
-                        k: int = 5, weight: float = 0.5) -> List[Dict]:
+    def _semantic_search(self, query: str, k: int = 20, 
+                   filters: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
         """
-        벡터 검색과 키워드 검색 결과를 결합
+        의미 기반 검색 구현 (키워드 검색 보완)
+        
+        Args:
+            query: 검색 쿼리 문자열
+            k: 반환할 결과 수
+            filters: 필터링 조건
+            
+        Returns:
+            List[Dict]: 의미 기반 검색 결과
+        """
+        if not hasattr(self, 'semantic_model'):
+            # 모델 초기화 (처음 호출 시에만)
+            from sentence_transformers import SentenceTransformer
+            self.semantic_model = SentenceTransformer('jhgan/ko-sroberta-multitask')
+            
+            # 캐시 디렉토리 설정
+            self.semantic_cache_dir = os.path.join(self.data_dir, 'semantic_cache')
+            os.makedirs(self.semantic_cache_dir, exist_ok=True)
+        
+        # 쿼리 임베딩 생성
+        query_embedding = self.semantic_model.encode(query)
+        
+        # 결과 저장용 딕셔너리
+        scores = {}
+        
+        # 모든 파편에 대해 의미적 유사도 계산
+        for fragment_id, metadata in self.fragment_metadata.items():
+            # 필터 적용
+            if filters and not self._apply_filters(metadata, filters):
+                continue
+            
+            content = metadata.get('content_preview', '')
+            if not content:
+                continue
+            
+            # 캐시에서 임베딩 검색 또는 새로 생성
+            content_embedding = self._get_semantic_embedding_from_cache(fragment_id)
+            if content_embedding is None:
+                content_embedding = self.semantic_model.encode(content)
+                self._save_semantic_embedding_to_cache(fragment_id, content_embedding)
+            
+            # 코사인 유사도 계산
+            similarity = self._cosine_similarity(query_embedding, content_embedding)
+            scores[fragment_id] = float(similarity)
+        
+        # 점수 기준 상위 결과 정렬
+        sorted_results = sorted(
+            [(fragment_id, score) for fragment_id, score in scores.items()],
+            key=lambda x: x[1],
+            reverse=True
+        )[:k]
+        
+        # 결과 포맷팅
+        results = []
+        for fragment_id, score in sorted_results:
+            metadata = self.fragment_metadata.get(fragment_id, {})
+            results.append({
+                'id': fragment_id,
+                'score': float(score),
+                'type': metadata.get('type', ''),
+                'name': metadata.get('name', ''),
+                'file_path': metadata.get('file_path', ''),
+                'file_name': metadata.get('file_name', ''),
+                'content_preview': metadata.get('content_preview', '')
+            })
+        
+        return results
+
+    def _cosine_similarity(self, vec1: np.ndarray, vec2: np.ndarray) -> float:
+        """
+        두 벡터 간의 코사인 유사도 계산
+        
+        Args:
+            vec1: 첫 번째 벡터
+            vec2: 두 번째 벡터
+            
+        Returns:
+            float: 코사인 유사도 (-1에서 1 사이의 값)
+        """
+        # 벡터 정규화
+        vec1_normalized = vec1 / np.linalg.norm(vec1)
+        vec2_normalized = vec2 / np.linalg.norm(vec2)
+        
+        # 코사인 유사도 계산
+        similarity = np.dot(vec1_normalized, vec2_normalized)
+        
+        return similarity
+
+    def _get_semantic_embedding_from_cache(self, fragment_id: str) -> Optional[np.ndarray]:
+        """
+        캐시에서 의미 임베딩 검색
+        
+        Args:
+            fragment_id: 파편 ID
+            
+        Returns:
+            Optional[np.ndarray]: 캐시된 임베딩 또는 None
+        """
+        if not hasattr(self, 'semantic_cache_dir'):
+            return None
+            
+        cache_path = os.path.join(self.semantic_cache_dir, f"semantic_{fragment_id}.pkl")
+        if os.path.exists(cache_path):
+            try:
+                with open(cache_path, 'rb') as f:
+                    return pickle.load(f)
+            except Exception as e:
+                print(f"캐시 로드 오류: {str(e)}")
+                return None
+        
+        return None
+
+    def _save_semantic_embedding_to_cache(self, fragment_id: str, embedding: np.ndarray) -> None:
+        """
+        의미 임베딩을 캐시에 저장
+        
+        Args:
+            fragment_id: 파편 ID
+            embedding: 임베딩 벡터
+        """
+        if not hasattr(self, 'semantic_cache_dir'):
+            return
+            
+        cache_path = os.path.join(self.semantic_cache_dir, f"semantic_{fragment_id}.pkl")
+        try:
+            with open(cache_path, 'wb') as f:
+                pickle.dump(embedding, f)
+        except Exception as e:
+            print(f"캐시 저장 오류: {str(e)}")
+
+    def _ensemble_results(self, vector_results: List[Dict], keyword_results: List[Dict], 
+                        semantic_results: List[Dict], k: int = 5) -> List[Dict]:
+        """
+        벡터 검색, 키워드 검색, 의미 기반 검색 결과를 결합
         
         Args:
             vector_results: 벡터 검색 결과
             keyword_results: 키워드 검색 결과
+            semantic_results: 의미 기반 검색 결과
             k: 반환할 결과 수
-            weight: 벡터 검색 가중치 (0~1)
             
         Returns:
             List[Dict]: 결합된 검색 결과
         """
+        # 가중치 설정
+        vector_weight = 0.4
+        keyword_weight = 0.2
+        semantic_weight = 0.4
+        
         # 결과 ID를 키로, 점수를 값으로 하는 딕셔너리 생성
         vector_scores = {r['id']: r['score'] for r in vector_results}
         keyword_scores = {r['id']: r['score'] for r in keyword_results}
+        semantic_scores = {r['id']: r['score'] for r in semantic_results}
         
         # 모든 고유 파편 ID 수집
-        all_ids = set(vector_scores.keys()) | set(keyword_scores.keys())
+        all_ids = set(vector_scores.keys()) | set(keyword_scores.keys()) | set(semantic_scores.keys())
         
         # 점수 정규화를 위한 최대값
         max_vector_score = max(vector_scores.values()) if vector_scores else 1.0
         max_keyword_score = max(keyword_scores.values()) if keyword_scores else 1.0
+        max_semantic_score = max(semantic_scores.values()) if semantic_scores else 1.0
         
         # 결합 점수 계산
         ensemble_scores = {}
@@ -386,9 +527,14 @@ class FaissVectorStore:
             # 정규화된 키워드 점수 (없으면 0)
             norm_keyword_score = keyword_scores.get(fragment_id, 0) / max_keyword_score
             
+            # 정규화된 의미 기반 점수 (없으면 0)
+            norm_semantic_score = semantic_scores.get(fragment_id, 0) / max_semantic_score
+            
             # 가중 결합 점수 계산
             ensemble_scores[fragment_id] = (
-                weight * norm_vector_score + (1 - weight) * norm_keyword_score
+                vector_weight * norm_vector_score + 
+                keyword_weight * norm_keyword_score + 
+                semantic_weight * norm_semantic_score
             )
         
         # 결합 점수 기준 정렬
@@ -402,7 +548,7 @@ class FaissVectorStore:
         results = []
         for fragment_id, score in sorted_results:
             # 원본 결과에서 메타데이터 가져오기
-            for r in vector_results + keyword_results:
+            for r in vector_results + keyword_results + semantic_results:
                 if r['id'] == fragment_id:
                     result = r.copy()
                     result['score'] = float(score)  # 앙상블 점수로 업데이트
@@ -427,6 +573,7 @@ class FaissVectorStore:
                 })
         
         return results
+
     
     def _apply_filters(self, metadata: Dict[str, Any], filters: Dict[str, Any]) -> bool:
         """
@@ -464,8 +611,8 @@ class FaissVectorStore:
         return True
     
     def search(self, query_vector: np.ndarray, k: int = 5, 
-            filters: Optional[Dict[str, Any]] = None,
-            rerank: bool = False) -> List[Dict[str, Any]]:
+          filters: Optional[Dict[str, Any]] = None,
+          rerank: bool = False) -> List[Dict[str, Any]]:
         """
         쿼리 벡터와 유사한 코드 파편 검색 (앙상블 검색 적용)
         
@@ -482,16 +629,22 @@ class FaissVectorStore:
             return []
         
         # filters에서 앙상블과 재랭킹 관련 옵션 추출
-        ensemble_weight = 0.5  # 기본값
+        vector_weight = 0.4  # 기본값
+        keyword_weight = 0.2  # 기본값
+        semantic_weight = 0.4  # 기본값
         query_text = None
         candidate_k = k * 6 if rerank else k  # 재랭킹 시 더 많은 후보 검색
         
         if filters and 'query_text' in filters:
             query_text = filters.pop('query_text')
         
-        if filters and 'ensemble_weight' in filters:
+        if filters and 'ensemble_weights' in filters:
             try:
-                ensemble_weight = float(filters.pop('ensemble_weight'))
+                weights = filters.pop('ensemble_weights')
+                if isinstance(weights, dict):
+                    vector_weight = float(weights.get('vector', 0.4))
+                    keyword_weight = float(weights.get('keyword', 0.2))
+                    semantic_weight = float(weights.get('semantic', 0.4))
             except (ValueError, TypeError):
                 pass
         
@@ -502,17 +655,20 @@ class FaissVectorStore:
         keyword_results = []
         if query_text:
             keyword_results = self._keyword_search(query_text, k=candidate_k)
-            
-            # 앙상블 검색 (벡터 + 키워드 결합)
-            if keyword_results:
-                combined_results = self._ensemble_results(
-                    vector_results=vector_results,
-                    keyword_results=keyword_results,
-                    k=candidate_k,
-                    weight=ensemble_weight
-                )
-            else:
-                combined_results = vector_results
+        
+        # 의미 기반 검색 수행 (query_text가 있는 경우만)
+        semantic_results = []
+        if query_text:
+            semantic_results = self._semantic_search(query_text, k=candidate_k, filters=filters)
+                
+        # 앙상블 검색 (세 가지 검색 결과 결합)
+        if query_text and (keyword_results or semantic_results):
+            combined_results = self._ensemble_results(
+                vector_results=vector_results,
+                keyword_results=keyword_results,
+                semantic_results=semantic_results,
+                k=candidate_k
+            )
         else:
             combined_results = vector_results
         
