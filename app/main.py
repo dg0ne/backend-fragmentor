@@ -137,12 +137,11 @@ async def startup_event():
     
     # 임베더 초기화
     embedder = CodeEmbedder(model_name='dragonkue/BGE-m3-ko')
-    
+    cross_encoder_model = os.getenv("SeoJHeasdw/ktds-vue-code-search-reranker-ko")
     # Cross-Encoder 초기화
     try:
-        model_path = os.path.abspath('./trained_cross_encoder_v2')
-        cross_encoder = CrossEncoder(model_name=model_path)
-        print(f"Cross-Encoder 모델 로드 성공 (경로: {model_path})")
+        cross_encoder = CrossEncoder(model_name=cross_encoder_model)
+        print(f"Cross-Encoder 모델 로드 성공: {cross_encoder_model}")
     except Exception as e:
         print(f"Cross-Encoder 모델 로드 실패: {str(e)}")
         cross_encoder = None

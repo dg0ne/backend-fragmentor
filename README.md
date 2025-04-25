@@ -50,6 +50,7 @@ pip install -r requirements.txt
 ### Cross-Encoder 모델
 - **기본 모델**: `dragonkue/bge-reranker-v2-m3-ko`
 - **파인튜닝된 모델**: `./trained_cross_encoder`
+- **허깅스페이스에 올린 모델 명**: `SeoJHeasdw/ktds-vue-code-search-reranker-ko`
 - **용도**: 검색 결과 재랭킹을 통한 정확도 향상
 
 ## 실행 방법
@@ -155,7 +156,8 @@ vue-todo-fragmentor/
 1. **Bi-Encoder 앙상블 검색**: 빠른 1차 후보 선별 (Faiss)
 2. **Cross-Encoder 재랭킹**: 사용자 질문과 코드 파편 간의 직접적인 관계 평가로 정밀한 순위 결정
 
-Cross-Encoder 모델은 `dragonkue/bge-reranker-v2-m3-ko`를 기반으로 `cross_encoding.json`의 예제 데이터를 사용하여 파인튜닝되었으며, 파인튜닝된 모델은 `./trained_cross_encoder` 디렉토리에 저장되어 있습니다.
+Cross-Encoder 모델은 `dragonkue/bge-reranker-v2-m3-ko`를 기반으로 `cross_encoding.json`의 예제 데이터를 사용하여 파인튜닝되었으며, 파인튜닝된 모델은 허깅스페이스에 [`./trained_cross_encoder`](https://huggingface.co/SeoJHeasdw/ktds-vue-code-search-reranker-ko) 저장되어 있습니다.
+- **Model ID**: `SeoJHeasdw/ktds-vue-code-search-reranker-ko`
 
 ## 주의사항
 

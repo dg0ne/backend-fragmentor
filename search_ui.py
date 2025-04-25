@@ -235,7 +235,8 @@ class CodeSearchShell(cmd.Cmd):
 # 메인 함수 정의
 def main():
     parser = argparse.ArgumentParser(description='Vue Todo 코드 검색 인터페이스')
-    parser.add_argument('--data-dir', type=str, default='./data', help='데이터 디렉토리 경로')
+    parser.add_argument('--model', type=str, default='SeoJHeasdw/ktds-vue-code-search-reranker-ko', 
+                        help='Cross-Encoder 모델 (HuggingFace 모델 ID 또는 로컬 경로)')
     
     args = parser.parse_args()
     
@@ -253,9 +254,8 @@ def main():
         # Cross-Encoder 초기화 (있는 경우)
         cross_encoder = None
         try:
-            model_path = os.path.abspath('./trained_cross_encoder_v2')
-            cross_encoder = CrossEncoder(model_name=model_path)
-            print(f"{Fore.GREEN}Cross-Encoder 모델 로드 성공 (경로: {model_path}){Style.RESET_ALL}")
+            cross_encoder = CrossEncoder(model_name=args.model)
+            print(f"{Fore.GREEN}Cross-Encoder 모델 로드 성공: {args.model}{Style.RESET_ALL}")
         except Exception as e:
             print(f"{Fore.YELLOW}Cross-Encoder 모델 로드 실패: {str(e)}{Style.RESET_ALL}")
             print("재랭킹 기능 없이 계속합니다.")
