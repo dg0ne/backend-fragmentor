@@ -235,18 +235,19 @@ class CodeSearchShell(cmd.Cmd):
 # 메인 함수 정의
 def main():
     parser = argparse.ArgumentParser(description='Vue Todo 코드 검색 인터페이스')
+    parser.add_argument('--data-dir', type=str, default='./data', help='데이터 디렉토리 경로')
     parser.add_argument('--model', type=str, default='SeoJHeasdw/ktds-vue-code-search-reranker-ko', 
                         help='Cross-Encoder 모델 (HuggingFace 모델 ID 또는 로컬 경로)')
     
     args = parser.parse_args()
     
     # 데이터 디렉토리 확인
-    if not os.path.exists(args.data_dir):
-        print(f"{Fore.YELLOW}경고: 데이터 디렉토리가 존재하지 않습니다: {args.data_dir}{Style.RESET_ALL}")
+    data_dir = args.data_dir  # 하이픈이 언더스코어로 변환됨
+    if not os.path.exists(data_dir):
+        print(f"{Fore.YELLOW}경고: 데이터 디렉토리가 존재하지 않습니다: {data_dir}{Style.RESET_ALL}")
         print("데이터 디렉토리를 생성합니다.")
-        os.makedirs(args.data_dir, exist_ok=True)
+        os.makedirs(data_dir, exist_ok=True)
     
-
     try:
         # 임베더 초기화
         embedder = CodeEmbedder(model_name='dragonkue/BGE-m3-ko')
@@ -264,7 +265,7 @@ def main():
         vector_store = FaissVectorStore(
             dimension=embedder.vector_dim,
             index_type='Cosine',
-            data_dir=args.data_dir,
+            data_dir=data_dir,
             index_name='vue_todo_fragments',
             cross_encoder=cross_encoder
         )
