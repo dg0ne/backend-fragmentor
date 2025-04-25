@@ -73,7 +73,7 @@ class SearchResponse(BaseModel):
 def deduplicate_results(results: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     """
     검색 결과에서 중복을 제거하는 함수
-    Vue 파일의 component가 있으면 해당 파일의 template, script, style 파편 제거
+    각 파일당 가장 높은 점수의 파편 하나만 유지
     
     Args:
         results: 원본 검색 결과 리스트
@@ -81,46 +81,25 @@ def deduplicate_results(results: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     Returns:
         중복이 제거된 결과 리스트
     """
-    # 파일별로 결과를 그룹화
-    file_fragments = {}
+    # 파일별로 가장 높은 점수의 파편만 유지
+    best_fragments = {}
     
-    # 결과를 파일 경로별로 그룹화
     for result in results:
         file_path = result['file_path']
-        if file_path not in file_fragments:
-            file_fragments[file_path] = []
-        file_fragments[file_path].append(result)
-    
-    # 중복 제거된 결과
-    deduplicated_results = []
-    
-    # 각 파일에 대해 처리
-    for file_path, fragments in file_fragments.items():
-        # Vue 파일인 경우 특별 처리
-        if file_path.endswith('.vue'):
-            # 해당 파일의 component 파편이 있는지 확인
-            component_fragment = None
-            other_fragments = []
-            
-            for fragment in fragments:
-                if fragment['type'] == 'component':
-                    # component 파편이 있으면 가장 높은 점수의 것을 선택
-                    if component_fragment is None or fragment['score'] > component_fragment['score']:
-                        component_fragment = fragment
-                else:
-                    other_fragments.append(fragment)
-            
-            # component 파편이 있으면 그것만 추가
-            if component_fragment:
-                deduplicated_results.append(component_fragment)
-            else:
-                # component 파편이 없으면 모든 파편 추가
-                deduplicated_results.extend(other_fragments)
+        
+        # 현재 파일의 최고 점수 파편과 비교
+        if file_path not in best_fragments:
+            best_fragments[file_path] = result
         else:
-            # Vue 파일이 아닌 경우 모든 파편 추가
-            deduplicated_results.extend(fragments)
+            # cross_score가 있으면 우선, 없으면 score 사용
+            current_score = result.get('cross_score', result['score'])
+            best_score = best_fragments[file_path].get('cross_score', best_fragments[file_path]['score'])
+            
+            if current_score > best_score:
+                best_fragments[file_path] = result
     
-    # 최종 점수로 정렬 (cross_score가 있으면 우선, 없으면 score 사용)
+    # 결과를 리스트로 변환하고 점수순으로 정렬
+    deduplicated_results = list(best_fragments.values())
     deduplicated_results.sort(
         key=lambda x: x.get('cross_score', x['score']), 
         reverse=True
