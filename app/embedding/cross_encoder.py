@@ -16,7 +16,7 @@ class CrossEncoder:
     """
     # 파인튜닝 된 모델 사용 할꺼라 경로변경
     # def __init__(self, model_name: str = 'dragonkue/bge-reranker-v2-m3-ko',
-    def __init__(self, model_name: str = './trained_cross_encoder',
+    def __init__(self, model_name: str = './trained_cross_encoder_v2',
                  device: str = 'cpu',
                  cache_dir: Optional[str] = None,
                  max_seq_length: int = 512):

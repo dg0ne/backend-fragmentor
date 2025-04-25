@@ -140,7 +140,7 @@ async def startup_event():
     
     # Cross-Encoder 초기화
     try:
-        model_path = os.path.abspath('./trained_cross_encoder')
+        model_path = os.path.abspath('./trained_cross_encoder_v2')
         cross_encoder = CrossEncoder(model_name=model_path)
         print(f"Cross-Encoder 모델 로드 성공 (경로: {model_path})")
     except Exception as e:

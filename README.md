@@ -86,10 +86,7 @@ python train_cross_encoder.py --examples cross_encoding.json --output-dir ./trai
 
 ```bash
 # Cross-Encoder 모델 파인튜닝
-python train_cross_encoder.py --examples cross_encoding.json --output-dir ./trained_cross_encoder --test
-
-# 커스텀 설정 실행
-python continue_training.py --examples my_custom_data.json --checkpoint 282 --epochs 2
+python continue_training.py --examples cross_encoding_additional.json --model-dir ./trained_cross_encoder --output-dir ./trained_cross_encoder_v2 --checkpoint 282 --epochs 3
 ```
 
 

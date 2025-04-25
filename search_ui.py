@@ -253,7 +253,7 @@ def main():
         # Cross-Encoder 초기화 (있는 경우)
         cross_encoder = None
         try:
-            model_path = os.path.abspath('./trained_cross_encoder')
+            model_path = os.path.abspath('./trained_cross_encoder_v2')
             cross_encoder = CrossEncoder(model_name=model_path)
             print(f"{Fore.GREEN}Cross-Encoder 모델 로드 성공 (경로: {model_path}){Style.RESET_ALL}")
         except Exception as e:

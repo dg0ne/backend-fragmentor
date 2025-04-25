@@ -135,27 +135,32 @@ def continue_training(
     train_dataset = CrossEncoderDataset(tokenizer, train_pairs, train_labels)
     val_dataset = CrossEncoderDataset(tokenizer, val_pairs, val_labels)
     
-    # 학습 인자 설정
+    # 학습 인자 설정 (RTX 4090 + 안정성 우선)
     training_args = TrainingArguments(
         output_dir=output_dir,
-        num_train_epochs=epochs,
-        per_device_train_batch_size=4,
-        per_device_eval_batch_size=4,
-        gradient_accumulation_steps=4,
-        warmup_steps=25,
+        num_train_epochs=epochs,  # 3 epochs as default
+        per_device_train_batch_size=4,  # 안정적으로 동작했던 배치 사이즈
+        per_device_eval_batch_size=4,   # 평가도 동일한 배치 사이즈
+        gradient_accumulation_steps=4,  # 효과적으로 배치 사이즈 16
+        warmup_steps=50,                # 데이터셋 크기를 고려하여 조정
         weight_decay=0.01,
         logging_dir=f"{output_dir}/logs",
-        logging_steps=5,
+        logging_steps=5,                # 더 자주 로깅
         eval_strategy="steps",
-        eval_steps=20,
+        eval_steps=50,                  # 50 스텝마다 평가
         save_strategy="steps",
-        save_steps=20,
+        save_steps=50,                  # 50 스텝마다 저장
         load_best_model_at_end=True,
         metric_for_best_model="loss",
         greater_is_better=False,
-        fp16=True,
-        dataloader_num_workers=0,
+        fp16=True,                      # RTX 4090에서 FP16 활용
+        dataloader_num_workers=4,       # 안정성을 위해 적절히 조정
         disable_tqdm=False,
+        learning_rate=1e-5,             # 안전한 학습률
+        max_grad_norm=1.0,              # 그래디언트 클리핑
+        save_total_limit=3,             # 체크포인트 개수 제한
+        optim="adamw_torch",            # 최적화된 옵티마이저
+        lr_scheduler_type="cosine",     # 코사인 스케줄러
     )
     
     # 트레이너 초기화
