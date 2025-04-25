@@ -166,62 +166,10 @@ class CodeSearchShell(cmd.Cmd):
                 if 'content_preview' in result:
                     print(f"\n{Fore.YELLOW}코드 미리보기:{Style.RESET_ALL}")
                     print(f"{result['content_preview']}")
-                    
-                print(f"\n{Fore.CYAN}관련 파편 보기: similar{Style.RESET_ALL}")
             else:
                 print(f"{Fore.YELLOW}유효한 인덱스 번호를 입력하세요. (1-{len(self.last_results)}){Style.RESET_ALL}")
         except ValueError:
             print(f"{Fore.YELLOW}유효한 숫자를 입력하세요.{Style.RESET_ALL}")
-    
-    def do_similar(self, arg):
-        """현재 보고 있는 파편과 유사한 다른 파편 찾기.
-        예: similar
-        재랭킹 적용: similar --rerank"""
-        
-        if not self.current_fragment_id:
-            print(f"{Fore.YELLOW}먼저 view 명령으로 파편을 선택하세요.{Style.RESET_ALL}")
-            return
-        
-        # 재랭킹 옵션 파싱
-        rerank = self.rerank_enabled and '--rerank' in arg
-        
-        # 유사 파편 검색
-        similar_results = self.vector_store.get_similar_fragments(self.current_fragment_id, k=5)
-        
-        # 재랭킹 적용 
-        if rerank and self.cross_encoder and similar_results:
-            # 현재 파편의 내용 가져오기
-            current_metadata = self.vector_store.fragment_metadata.get(self.current_fragment_id, {})
-            current_content = current_metadata.get('content_preview', '')
-            
-            # 재랭킹 수행
-            similar_results = self.cross_encoder.rerank(
-                query=current_content,
-                passages=similar_results,
-                top_k=5
-            )
-        
-        if not similar_results:
-            print(f"{Fore.YELLOW}유사한 파편을 찾을 수 없습니다.{Style.RESET_ALL}")
-            return
-            
-        print(f"\n{Fore.CYAN}유사한 파편 ({len(similar_results)}개):{Style.RESET_ALL}")
-        if rerank and self.cross_encoder:
-            print(f"{Fore.MAGENTA}[Cross-Encoder 재랭킹 적용됨]{Style.RESET_ALL}")
-        print(f"{Fore.CYAN}{'='*60}{Style.RESET_ALL}")
-        
-        for i, result in enumerate(similar_results):
-            # 점수 텍스트 구성
-            score_text = f"유사도: {result['score']:.4f}"
-            if 'cross_score' in result:
-                score_text += f" | 재랭킹 점수: {result['cross_score']:.4f}"
-                
-            print(f"\n{Fore.GREEN}[{i+1}] {result['name']} ({result['type']}){Style.RESET_ALL} - {score_text}")
-            print(f"  파일: {Fore.BLUE}{result['file_name']}{Style.RESET_ALL}")
-            print(f"  {Fore.YELLOW}{result['content_preview']}{Style.RESET_ALL}")
-            
-        # 유사 결과를 마지막 결과로 업데이트
-        self.last_results = similar_results
     
     def do_exit(self, arg):
         """프로그램 종료"""

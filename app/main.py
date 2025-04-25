@@ -258,45 +258,6 @@ async def get_fragment(fragment_id: str):
         "metadata": metadata
     }
 
-@app.get("/similar/{fragment_id}")
-async def get_similar_fragments(
-    fragment_id: str, 
-    k: int = Query(5, ge=1, le=20),
-    rerank: bool = Query(False)
-):
-    """특정 파편과 유사한 파편 검색"""
-    if not vector_store:
-        raise HTTPException(status_code=503, detail="서비스 초기화되지 않음")
-    
-    # 기본 유사 파편 검색
-    similar_results = vector_store.get_similar_fragments(fragment_id, k=k*2)
-    
-    if not similar_results:
-        raise HTTPException(status_code=404, detail="유사한 파편을 찾을 수 없음")
-    
-    # 재랭킹 적용
-    if rerank and cross_encoder:
-        current_metadata = vector_store.fragment_metadata.get(fragment_id, {})
-        current_content = current_metadata.get('content_preview', '')
-        
-        similar_results = cross_encoder.rerank(
-            query=current_content,
-            passages=similar_results,
-            top_k=k*2
-        )
-    
-    # 중복 제거
-    deduplicated_results = deduplicate_results(similar_results)
-    
-    # 요청한 k개로 제한
-    final_results = deduplicated_results[:k]
-    
-    return {
-        "fragment_id": fragment_id,
-        "similar_fragments": final_results,
-        "reranked": rerank and cross_encoder is not None
-    }
-
 @app.get("/file-fragments")
 async def get_fragments_by_file(file_path: str):
     """특정 파일의 모든 파편 조회"""

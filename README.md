@@ -104,8 +104,6 @@ python continue_training.py --examples cross_encoding_additional.json --model-di
 코드검색> search 템플릿 섹션 --type=template
 코드검색> search 로그인 처리 --rerank (Cross-Encoder 재랭킹 적용)
 코드검색> view 2
-코드검색> similar
-코드검색> similar --rerank
 코드검색> file src/components/TodoItem.vue
 코드검색> stats
 ```
