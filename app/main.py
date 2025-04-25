@@ -57,10 +57,9 @@ class FragmentResult(BaseModel):
     cross_score: Optional[float] = None
     type: str
     name: str
-    file_path: str
-    relative_path: str  # 상대 경로 추가
+    relative_path: str
     file_name: str
-    content_preview: str
+    content: str  # content_preview를 content로 변경
     component_name: Optional[str] = None
     
 class SearchResponse(BaseModel):
@@ -70,42 +69,46 @@ class SearchResponse(BaseModel):
     reranked: bool
     results: List[FragmentResult]
 
-def deduplicate_results(results: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+def remove_unnecessary_fragments(results: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     """
-    검색 결과에서 중복을 제거하는 함수
-    각 파일당 가장 높은 점수의 파편 하나만 유지
+    검색 결과에서 불필요한 파편을 제거하는 함수
+    - 각 파일당 component 타입이 있으면 그것만 유지
+    - component가 없는 파일은 모든 파편 유지
     
     Args:
         results: 원본 검색 결과 리스트
         
     Returns:
-        중복이 제거된 결과 리스트
+        불필요한 파편이 제거된 결과 리스트
     """
-    # 파일별로 가장 높은 점수의 파편만 유지
-    best_fragments = {}
+    # 파일별로 파편 그룹화
+    file_fragments = {}
     
     for result in results:
         file_path = result['file_path']
+        if file_path not in file_fragments:
+            file_fragments[file_path] = []
+        file_fragments[file_path].append(result)
+    
+    # 각 파일에서 대표 파편 선택
+    final_results = []
+    
+    for file_path, fragments in file_fragments.items():
+        # component 타입이 있는지 확인
+        component_fragments = [f for f in fragments if f['type'] == 'component']
         
-        # 현재 파일의 최고 점수 파편과 비교
-        if file_path not in best_fragments:
-            best_fragments[file_path] = result
+        if component_fragments:
+            # component 파편이 있으면 그것만 추가
+            best_component = max(
+                component_fragments, 
+                key=lambda x: x.get('cross_score', x['score'])
+            )
+            final_results.append(best_component)
         else:
-            # cross_score가 있으면 우선, 없으면 score 사용
-            current_score = result.get('cross_score', result['score'])
-            best_score = best_fragments[file_path].get('cross_score', best_fragments[file_path]['score'])
-            
-            if current_score > best_score:
-                best_fragments[file_path] = result
+            # component가 없으면 모든 파편 추가
+            final_results.extend(fragments)
     
-    # 결과를 리스트로 변환하고 점수순으로 정렬
-    deduplicated_results = list(best_fragments.values())
-    deduplicated_results.sort(
-        key=lambda x: x.get('cross_score', x['score']), 
-        reverse=True
-    )
-    
-    return deduplicated_results
+    return final_results
 
 @app.on_event("startup")
 async def startup_event():
@@ -152,12 +155,6 @@ async def root():
 async def search_code(request: SearchRequest):
     """
     코드 검색 API 엔드포인트
-    
-    Args:
-        request: 검색 요청 정보
-        
-    Returns:
-        검색 결과 (중복 제거됨)
     """
     if not vector_store or not embedder:
         raise HTTPException(status_code=503, detail="서비스 초기화되지 않음")
@@ -173,43 +170,47 @@ async def search_code(request: SearchRequest):
     filters['ensemble_weight'] = request.ensemble_weight
     filters['rerank'] = request.rerank and cross_encoder is not None
     
-    # 검색 실행 (k를 2배로 늘려서 중복 제거 후에도 충분한 결과가 남도록 함)
-    search_k = request.k * 2
+    # 검색 실행 (search_ui.py와 동일하게 k개만 검색)
     results = vector_store.search(
         query_vector=query_embedding,
-        k=search_k,
+        k=request.k,
         filters=filters,
         rerank=request.rerank and cross_encoder is not None
     )
     
-    # 중복 제거
-    deduplicated_results = deduplicate_results(results)
-    
-    # 요청한 k개로 제한
-    final_results = deduplicated_results[:request.k]
+    # 불필요한 파편 제거 (component 우선)
+    filtered_results = remove_unnecessary_fragments(results)
     
     elapsed_time = time.time() - start_time
     
-    # 상대 경로 추가
-    for result in final_results:
-        # file_path에서 todo-web 이후의 경로만 추출
+    # 결과 가공
+    for result in filtered_results:
+        # 상대 경로 추가
         full_path = result['file_path']
         try:
             todo_web_index = full_path.index('todo-web')
             relative_path = full_path[todo_web_index:]
         except ValueError:
-            # todo-web이 없는 경우 전체 경로 사용
             relative_path = full_path
         result['relative_path'] = relative_path
+        
+        # 전체 컨텐츠 추가
+        metadata = vector_store.fragment_metadata.get(result['id'], {})
+        result['content'] = metadata.get('full_content', '')  # 전체 컨텐츠
+        
+        # file_path 제거
+        result.pop('file_path', None)
+        # content_preview 제거
+        result.pop('content_preview', None)
     
     # 응답 형식으로 변환
     fragment_results = [
-        FragmentResult(**result) for result in final_results
+        FragmentResult(**result) for result in filtered_results
     ]
     
     return SearchResponse(
         query=request.query,
-        total_results=len(final_results),
+        total_results=len(filtered_results),
         elapsed_time=elapsed_time,
         reranked=request.rerank and cross_encoder is not None,
         results=fragment_results
