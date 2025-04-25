@@ -40,8 +40,12 @@ pip install -r requirements.txt
 ## 사용중인 AI모델
 
 ### Bi-Encoder 모델
-- **모델명**: `jhgan/ko-sroberta-multitask`
+- **모델명**: `dragonkue/BGE-m3-ko`
 - **용도**: 초기 벡터 검색에 사용되는 임베딩 생성
+
+### 의미 기반 모델
+- **모델명**: `jhgan/ko-sroberta-multitask`
+- **용도**: 멀티태스크 학습(KorNLI+KorSTS)으로 문장 관계 추론 능력 우수
 
 ### Cross-Encoder 모델
 - **기본 모델**: `dragonkue/bge-reranker-v2-m3-ko`
