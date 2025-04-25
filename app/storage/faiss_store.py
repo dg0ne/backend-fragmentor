@@ -633,7 +633,7 @@ class FaissVectorStore:
         keyword_weight = 0.2  # 기본값
         semantic_weight = 0.4  # 기본값
         query_text = None
-        candidate_k = k * 6 if rerank else k  # 재랭킹 시 더 많은 후보 검색
+        candidate_k = k * 5 if rerank else k  # 재랭킹 시 더 많은 후보 검색
         
         if filters and 'query_text' in filters:
             query_text = filters.pop('query_text')
