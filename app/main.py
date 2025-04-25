@@ -116,8 +116,9 @@ async def startup_event():
     
     # 임베더 초기화
     embedder = CodeEmbedder(model_name='dragonkue/BGE-m3-ko')
-    cross_encoder_model = os.getenv("SeoJHeasdw/ktds-vue-code-search-reranker-ko")
+    
     # Cross-Encoder 초기화
+    cross_encoder_model = "SeoJHeasdw/ktds-vue-code-search-reranker-ko"
     try:
         cross_encoder = CrossEncoder(model_name=cross_encoder_model)
         print(f"Cross-Encoder 모델 로드 성공: {cross_encoder_model}")
