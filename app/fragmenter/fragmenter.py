@@ -77,13 +77,14 @@ class VueFragmenter:
         )
         fragments.append(component_fragment)
         
-        # 2. 템플릿 섹션 파편화
+        # 2. 템플릿 섹션 파편화 - 태그 포함
         if parsed_file.get('template'):
+            template_content = f"<template>\n{parsed_file['template']}\n</template>"
             template_fragment = self._create_fragment(
                 fragment_id=str(uuid.uuid4()),
                 fragment_type='template',
                 name=f"{component_name}_template",
-                content=parsed_file['template'],
+                content=template_content,
                 metadata={
                     'component_name': component_name,
                     'file_path': file_info['file_path'],
@@ -92,13 +93,14 @@ class VueFragmenter:
             )
             fragments.append(template_fragment)
         
-        # 3. 스크립트 섹션 파편화
+        # 3. 스크립트 섹션 파편화 - 태그 포함
         if parsed_file.get('script'):
+            script_content = f"<script>\n{parsed_file['script']}\n</script>"
             script_fragment = self._create_fragment(
                 fragment_id=str(uuid.uuid4()),
                 fragment_type='script',
                 name=f"{component_name}_script",
-                content=parsed_file['script'],
+                content=script_content,
                 metadata={
                     'component_name': component_name,
                     'file_path': file_info['file_path'],
@@ -109,13 +111,14 @@ class VueFragmenter:
             )
             fragments.append(script_fragment)
         
-        # 4. 스타일 섹션 파편화
+        # 4. 스타일 섹션 파편화 - 태그 포함
         if parsed_file.get('style'):
+            style_content = f"<style scoped>\n{parsed_file['style']}\n</style>"
             style_fragment = self._create_fragment(
                 fragment_id=str(uuid.uuid4()),
                 fragment_type='style',
                 name=f"{component_name}_style",
-                content=parsed_file['style'],
+                content=style_content,
                 metadata={
                     'component_name': component_name,
                     'file_path': file_info['file_path'],
@@ -127,13 +130,14 @@ class VueFragmenter:
         return fragments
 
     def _fragment_js_file(self, parsed_file: Dict[str, Any]) -> List[Dict[str, Any]]:
-        """JS 파일을 javascript 타입으로 파편화"""
+        """JS 파일을 javascript 타입으로 파편화 - 태그 없음"""
         fragments = []
         file_info = parsed_file['file_info']
         
+        # 독립 JS 파일은 태그 없이 원본 내용 그대로 사용
         js_fragment = self._create_fragment(
             fragment_id=str(uuid.uuid4()),
-            fragment_type='javascript',  # 'script' 대신 'javascript' 사용
+            fragment_type='javascript',
             name=file_info['file_name'],
             content=parsed_file['raw_content'],
             metadata={
@@ -146,13 +150,14 @@ class VueFragmenter:
         return fragments
 
     def _fragment_css_file(self, parsed_file: Dict[str, Any]) -> List[Dict[str, Any]]:
-        """CSS 파일을 css 타입으로 파편화"""
+        """CSS 파일을 css 타입으로 파편화 - 태그 없음"""
         fragments = []
         file_info = parsed_file['file_info']
         
+        # 독립 CSS 파일은 태그 없이 원본 내용 그대로 사용
         css_fragment = self._create_fragment(
             fragment_id=str(uuid.uuid4()),
-            fragment_type='css',  # 'style' 대신 'css' 사용
+            fragment_type='css',
             name=file_info['file_name'],
             content=parsed_file['raw_content'],
             metadata={
@@ -165,13 +170,14 @@ class VueFragmenter:
         return fragments
 
     def _fragment_html_file(self, parsed_file: Dict[str, Any]) -> List[Dict[str, Any]]:
-        """HTML 파일 전체를 하나의 파편으로 처리"""
+        """HTML 파일을 html 타입으로 파편화 - 태그 없음"""
         fragments = []
         file_info = parsed_file['file_info']
         
+        # HTML 파일은 이미 태그를 포함하고 있으므로 원본 사용
         html_fragment = self._create_fragment(
             fragment_id=str(uuid.uuid4()),
-            fragment_type='template',
+            fragment_type='html',  # 'template' 대신 'html' 타입으로 명확히 구분
             name=file_info['file_name'],
             content=parsed_file['raw_content'],
             metadata={
