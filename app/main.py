@@ -45,7 +45,7 @@ embedder = None
 cross_encoder = None
 
 # 두 번째 백엔드 URL 환경 변수에서 로드
-SECOND_BACKEND_URL = "http://codecooking-backend.20.214.196.128.nip.io/workflow/api/saveFragmentResult"
+SECOND_BACKEND_URL = "http://codecooking-backend.20.214.196.128.nip.io/workflow/fragment/save-result"
 
 # Pydantic 모델 정의
 class SearchRequest(BaseModel):
