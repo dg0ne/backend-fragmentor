@@ -204,8 +204,8 @@ async def send_to_second_backend(query: str, results: List[Dict[str, Any]], elap
         # 디버깅을 위한 JSON 로그 (결과 배열은 length만 표시)
         log_data = response_data.copy()
         log_data['results'] = f"[{len(fragment_results)} items]"
-        print(f"두 번째 백엔드 전송 데이터: {json.dumps(log_data, ensure_ascii=False)}")
-        
+        print(f"두 번째 백엔드 전송 데이터 (results 필드 포함): {json.dumps(response_data, ensure_ascii=False)}")
+                
         # 첫 번째 결과 항목의 content_preview 길이 확인 (디버깅용)
         if fragment_results:
             preview = fragment_results[0].get('content_preview', '')
