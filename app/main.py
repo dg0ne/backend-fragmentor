@@ -9,7 +9,7 @@ import sys
 import time
 import json
 import httpx
-from typing import Dict, List, Any, Optional
+from typing import Dict, List, Any, Optional, Union 
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
@@ -54,7 +54,8 @@ class SearchRequest(BaseModel):
     rerank: bool = Field(True, description="Cross-Encoder 재랭킹 여부")
     filters: Optional[Dict[str, Any]] = Field(None, description="검색 필터")
     ensemble_weight: float = Field(0.5, description="앙상블 가중치", ge=0.0, le=1.0)
-    requirementId: Optional[int] = Field(None, description="요구사항 ID")
+    # requirementId를 Optional[Union[int, str]]로 수정하여 정수 또는 문자열 모두 허용
+    requirementId: Optional[Union[int, str]] = Field(None, description="요구사항 ID")
 
 class FragmentResult(BaseModel):
     id: str
@@ -64,7 +65,8 @@ class FragmentResult(BaseModel):
     name: str
     relative_path: str
     file_name: str
-    content: str  # content_preview를 content로 변경
+    content: str  # 전체 내용
+    content_preview: str  # 미리보기 내용 (추가)
     component_name: Optional[str] = None
     
 class SearchResponse(BaseModel):
@@ -136,7 +138,7 @@ def remove_unnecessary_fragments(results: List[Dict[str, Any]]) -> List[Dict[str
     
     return final_results
 
-async def send_to_second_backend(query: str, results: List[Dict[str, Any]], elapsed_time: float, reranked: bool, requirement_id: Optional[int] = None):
+async def send_to_second_backend(query: str, results: List[Dict[str, Any]], elapsed_time: float, reranked: bool, requirement_id: Optional[Union[int, str]] = None):
     """
     두 번째 백엔드로 검색 결과 전송
     
@@ -145,6 +147,7 @@ async def send_to_second_backend(query: str, results: List[Dict[str, Any]], elap
         results: 원본 검색 결과 (필터링되지 않은)
         elapsed_time: 검색 소요 시간
         reranked: 재랭킹 적용 여부
+        requirement_id: 요구사항 ID (정수 또는 문자열)
     """
     try:
         # 결과 가공
@@ -158,7 +161,18 @@ async def send_to_second_backend(query: str, results: List[Dict[str, Any]], elap
             except ValueError:
                 relative_path = full_path
             
-            # 결과 형식 맞추기 (content 대신 content_preview 사용)
+            # 메타데이터에서 정보 가져오기
+            metadata = vector_store.fragment_metadata.get(result['id'], {})
+            
+            # content_preview 처리
+            content_preview = result.get('content_preview', '')
+            if not content_preview or isinstance(content_preview, int):
+                content_preview = metadata.get('content_preview', '')
+                if not content_preview:
+                    full_content = metadata.get('full_content', '')
+                    content_preview = (full_content[:150] + "...") if len(full_content) > 150 else full_content
+            
+            # 결과 형식 맞추기
             fragment_results.append({
                 'id': result['id'],
                 'score': result['score'],
@@ -167,8 +181,8 @@ async def send_to_second_backend(query: str, results: List[Dict[str, Any]], elap
                 'name': result['name'],
                 'relative_path': relative_path,
                 'file_name': result['file_name'],
-                'content_preview': result.get('content_preview', ''),
-                'component_name': result.get('component_name')
+                'content_preview': content_preview,
+                'component_name': metadata.get('component_name', '')
             })
         
         # 두 번째 백엔드에 전송할 응답 구성
@@ -177,21 +191,27 @@ async def send_to_second_backend(query: str, results: List[Dict[str, Any]], elap
             'total_results': len(fragment_results),
             'elapsed_time': elapsed_time,
             'reranked': reranked,
+            'requirementId': requirement_id,  # null 또는 실제 값 그대로 전달
             'results': fragment_results
         }
         
+        # 디버깅
+        print(f"두 번째 백엔드 전송 데이터 준비 완료: {len(fragment_results)}개 결과")
+        
         # 비동기 HTTP 클라이언트로 두 번째 백엔드에 전송
         async with httpx.AsyncClient() as client:
-            await client.post(
+            response = await client.post(
                 SECOND_BACKEND_URL,
                 json=response_data,
-                timeout=4.0
+                timeout=5.0  # 타임아웃 5초로 설정
             )
+            print(f"두 번째 백엔드 응답 코드: {response.status_code}")
             
     except Exception as e:
         print(f"두 번째 백엔드 전송 오류 (무시됨): {str(e)}")
-        # 오류를 로깅만 하고 전파하지 않음
-        
+        import traceback
+        print(traceback.format_exc())
+
 @app.on_event("startup")
 async def startup_event():
     """서버 시작 시 자원 초기화"""
@@ -241,6 +261,9 @@ async def search_code(request: SearchRequest):
     if not vector_store or not embedder:
         raise HTTPException(status_code=503, detail="서비스 초기화되지 않음")
     
+    # 디버깅을 위한 로그 추가
+    print(f"검색 요청 데이터: {request.dict()}")
+    
     start_time = time.time()
     
     # 검색 쿼리 임베딩 생성
@@ -252,7 +275,7 @@ async def search_code(request: SearchRequest):
     filters['ensemble_weight'] = request.ensemble_weight
     filters['rerank'] = request.rerank and cross_encoder is not None
     
-    # 검색 실행 (search_ui.py와 동일하게 k개만 검색)
+    # 검색 실행
     results = vector_store.search(
         query_vector=query_embedding,
         k=request.k,
@@ -273,11 +296,14 @@ async def search_code(request: SearchRequest):
                 reranked=request.rerank and cross_encoder is not None
             )
         except Exception as e:
-            print(f"두 번째 백엔드 전송 중 오류 발생 (무시됨): {str(e)}")
-    # 불필요한 파편 제거 (component 우선) - 첫 번째 백엔드 결과용
+            print(f"두 번째 백엔드 전송 오류 (무시됨): {str(e)}")
+            # 오류가 발생해도 계속 진행
+    
+    # 불필요한 파편 제거 (component 우선)
     filtered_results = remove_unnecessary_fragments(results)
     
-    # 결과 가공 - 첫 번째 백엔드 결과용
+    # 결과 가공
+    fragment_results = []
     for result in filtered_results:
         # 상대 경로 추가
         full_path = result['file_path']
@@ -286,25 +312,40 @@ async def search_code(request: SearchRequest):
             relative_path = full_path[todo_web_index:]
         except ValueError:
             relative_path = full_path
-        result['relative_path'] = relative_path
         
-        # 전체 컨텐츠 추가
+        # 메타데이터에서 전체 컨텐츠 가져오기
         metadata = vector_store.fragment_metadata.get(result['id'], {})
-        result['content'] = metadata.get('full_content', '')  # 전체 컨텐츠
+        full_content = metadata.get('full_content', '')
         
-        # file_path 제거
-        result.pop('file_path', None)
-        # content_preview 제거
-        result.pop('content_preview', None)
-    
-    # 응답 형식으로 변환
-    fragment_results = [
-        FragmentResult(**result) for result in filtered_results
-    ]
+        # content_preview 필드 확인 및 수정
+        content_preview = result.get('content_preview', '')
+        if not content_preview or isinstance(content_preview, int):
+            # 메타데이터에서 content_preview를 다시 가져오거나 생성
+            content_preview = metadata.get('content_preview', '')
+            if not content_preview:
+                # 전체 내용이 있으면 처음 150자를 미리보기로 사용
+                content_preview = (full_content[:150] + "...") if len(full_content) > 150 else full_content
+        
+        # 컴포넌트 이름 추가
+        component_name = metadata.get('component_name', '')
+        
+        # 최종 결과 생성
+        fragment_results.append(FragmentResult(
+            id=result['id'],
+            score=result['score'],
+            cross_score=result.get('cross_score'),
+            type=result['type'],
+            name=result['name'],
+            relative_path=relative_path,
+            file_name=result['file_name'],
+            content=full_content,
+            content_preview=content_preview,
+            component_name=component_name
+        ))
     
     return SearchResponse(
         query=request.query,
-        total_results=len(filtered_results),
+        total_results=len(fragment_results),
         elapsed_time=elapsed_time,
         reranked=request.rerank and cross_encoder is not None,
         requirementId=request.requirementId,
