@@ -8,6 +8,7 @@ import os
 import sys
 import time
 import json
+import httpx
 from typing import Dict, List, Any, Optional
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
@@ -43,6 +44,9 @@ vector_store = None
 embedder = None
 cross_encoder = None
 
+# 두 번째 백엔드 URL 환경 변수에서 로드
+SECOND_BACKEND_URL = "http://codecooking-backend.20.214.196.128.nip.io/workflow/api/saveFragmentResult"
+
 # Pydantic 모델 정의
 class SearchRequest(BaseModel):
     query: str = Field(..., description="검색 쿼리")
@@ -50,6 +54,7 @@ class SearchRequest(BaseModel):
     rerank: bool = Field(True, description="Cross-Encoder 재랭킹 여부")
     filters: Optional[Dict[str, Any]] = Field(None, description="검색 필터")
     ensemble_weight: float = Field(0.5, description="앙상블 가중치", ge=0.0, le=1.0)
+    requirementId: Optional[int] = Field(None, description="요구사항 ID")
 
 class FragmentResult(BaseModel):
     id: str
@@ -67,7 +72,28 @@ class SearchResponse(BaseModel):
     total_results: int
     elapsed_time: float
     reranked: bool
+    requirementId: Optional[int] = None
     results: List[FragmentResult]
+
+# 두 번째 백엔드를 위한 모델
+class SecondBackendFragmentResult(BaseModel):
+    id: str
+    score: float
+    cross_score: Optional[float] = None
+    type: str
+    name: str
+    relative_path: str
+    file_name: str
+    content_preview: str  # content 대신 content_preview 사용
+    component_name: Optional[str] = None
+    
+class SecondBackendSearchResponse(BaseModel):
+    query: str
+    total_results: int
+    elapsed_time: float
+    reranked: bool
+    requirementId: Optional[int] = None
+    results: List[SecondBackendFragmentResult]
 
 def remove_unnecessary_fragments(results: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     """
@@ -109,6 +135,61 @@ def remove_unnecessary_fragments(results: List[Dict[str, Any]]) -> List[Dict[str
             final_results.extend(fragments)
     
     return final_results
+
+async def send_to_second_backend(query: str, results: List[Dict[str, Any]], elapsed_time: float, reranked: bool, requirement_id: Optional[int] = None):
+    """
+    두 번째 백엔드로 검색 결과 전송
+    
+    Args:
+        query: 검색 쿼리
+        results: 원본 검색 결과 (필터링되지 않은)
+        elapsed_time: 검색 소요 시간
+        reranked: 재랭킹 적용 여부
+    """
+    try:
+        # 결과 가공
+        fragment_results = []
+        for result in results:
+            # 상대 경로 추가
+            full_path = result['file_path']
+            try:
+                todo_web_index = full_path.index('todo-web')
+                relative_path = full_path[todo_web_index:]
+            except ValueError:
+                relative_path = full_path
+            
+            # 결과 형식 맞추기 (content 대신 content_preview 사용)
+            fragment_results.append({
+                'id': result['id'],
+                'score': result['score'],
+                'cross_score': result.get('cross_score'),
+                'type': result['type'],
+                'name': result['name'],
+                'relative_path': relative_path,
+                'file_name': result['file_name'],
+                'content_preview': result.get('content_preview', ''),
+                'component_name': result.get('component_name')
+            })
+        
+        # 두 번째 백엔드에 전송할 응답 구성
+        response_data = {
+            'query': query,
+            'total_results': len(fragment_results),
+            'elapsed_time': elapsed_time,
+            'reranked': reranked,
+            'results': fragment_results
+        }
+        
+        # 비동기 HTTP 클라이언트로 두 번째 백엔드에 전송
+        async with httpx.AsyncClient() as client:
+            await client.post(
+                SECOND_BACKEND_URL,
+                json=response_data,
+                timeout=10.0
+            )
+            
+    except Exception as e:
+        print(f"두 번째 백엔드 전송 오류: {str(e)}")
 
 @app.on_event("startup")
 async def startup_event():
@@ -178,12 +259,22 @@ async def search_code(request: SearchRequest):
         rerank=request.rerank and cross_encoder is not None
     )
     
-    # 불필요한 파편 제거 (component 우선)
-    filtered_results = remove_unnecessary_fragments(results)
-    
     elapsed_time = time.time() - start_time
     
-    # 결과 가공
+    # 두 번째 백엔드로 원본 결과 전송 (비동기)
+    if SECOND_BACKEND_URL:
+        await send_to_second_backend(
+            query=request.query,
+            results=results,
+            elapsed_time=elapsed_time,
+            requirement_id=request.requirementId,
+            reranked=request.rerank and cross_encoder is not None
+        )
+    
+    # 불필요한 파편 제거 (component 우선) - 첫 번째 백엔드 결과용
+    filtered_results = remove_unnecessary_fragments(results)
+    
+    # 결과 가공 - 첫 번째 백엔드 결과용
     for result in filtered_results:
         # 상대 경로 추가
         full_path = result['file_path']
@@ -213,6 +304,7 @@ async def search_code(request: SearchRequest):
         total_results=len(filtered_results),
         elapsed_time=elapsed_time,
         reranked=request.rerank and cross_encoder is not None,
+        requirementId=request.requirementId,
         results=fragment_results
     )
 
