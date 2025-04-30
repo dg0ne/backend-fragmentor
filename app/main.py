@@ -185,12 +185,13 @@ async def send_to_second_backend(query: str, results: List[Dict[str, Any]], elap
             await client.post(
                 SECOND_BACKEND_URL,
                 json=response_data,
-                timeout=10.0
+                timeout=4.0
             )
             
     except Exception as e:
-        print(f"두 번째 백엔드 전송 오류: {str(e)}")
-
+        print(f"두 번째 백엔드 전송 오류 (무시됨): {str(e)}")
+        # 오류를 로깅만 하고 전파하지 않음
+        
 @app.on_event("startup")
 async def startup_event():
     """서버 시작 시 자원 초기화"""
@@ -263,14 +264,16 @@ async def search_code(request: SearchRequest):
     
     # 두 번째 백엔드로 원본 결과 전송 (비동기)
     if SECOND_BACKEND_URL:
-        await send_to_second_backend(
-            query=request.query,
-            results=results,
-            elapsed_time=elapsed_time,
-            requirement_id=request.requirementId,
-            reranked=request.rerank and cross_encoder is not None
-        )
-    
+        try:
+            await send_to_second_backend(
+                query=request.query,
+                results=results,
+                elapsed_time=elapsed_time,
+                requirement_id=request.requirementId,
+                reranked=request.rerank and cross_encoder is not None
+            )
+        except Exception as e:
+            print(f"두 번째 백엔드 전송 중 오류 발생 (무시됨): {str(e)}")
     # 불필요한 파편 제거 (component 우선) - 첫 번째 백엔드 결과용
     filtered_results = remove_unnecessary_fragments(results)
     
