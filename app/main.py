@@ -152,7 +152,7 @@ async def send_to_second_backend(query: str, results: List[Dict[str, Any]], elap
     try:
         # 결과 가공
         fragment_results = []
-        for result in results:
+        for idx, result in enumerate(results):
             # 상대 경로 추가
             full_path = result['file_path']
             try:
@@ -172,8 +172,8 @@ async def send_to_second_backend(query: str, results: List[Dict[str, Any]], elap
                     full_content = metadata.get('full_content', '')
                     content_preview = (full_content[:150] + "...") if len(full_content) > 150 else full_content
             
-            # 결과 형식 맞추기
-            fragment_results.append({
+            # 결과 항목 생성
+            fragment_result = {
                 'id': result['id'],
                 'score': result['score'],
                 'cross_score': result.get('cross_score'),
@@ -183,7 +183,13 @@ async def send_to_second_backend(query: str, results: List[Dict[str, Any]], elap
                 'file_name': result['file_name'],
                 'content_preview': content_preview,
                 'component_name': metadata.get('component_name', '')
-            })
+            }
+            
+            # 첫 번째 결과 항목에 대한 상세 로그 (디버깅용)
+            if idx == 0:
+                print(f"첫 번째 결과 항목 상세: {json.dumps(fragment_result, ensure_ascii=False)}")
+            
+            fragment_results.append(fragment_result)
         
         # 두 번째 백엔드에 전송할 응답 구성
         response_data = {
@@ -195,8 +201,15 @@ async def send_to_second_backend(query: str, results: List[Dict[str, Any]], elap
             'results': fragment_results
         }
         
-        # 디버깅
-        print(f"두 번째 백엔드 전송 데이터 준비 완료: {len(fragment_results)}개 결과")
+        # 디버깅을 위한 JSON 로그 (결과 배열은 length만 표시)
+        log_data = response_data.copy()
+        log_data['results'] = f"[{len(fragment_results)} items]"
+        print(f"두 번째 백엔드 전송 데이터: {json.dumps(log_data, ensure_ascii=False)}")
+        
+        # 첫 번째 결과 항목의 content_preview 길이 확인 (디버깅용)
+        if fragment_results:
+            preview = fragment_results[0].get('content_preview', '')
+            print(f"첫 번째 결과의 content_preview 길이: {len(preview)}, 타입: {type(preview)}")
         
         # 비동기 HTTP 클라이언트로 두 번째 백엔드에 전송
         async with httpx.AsyncClient() as client:
@@ -206,6 +219,12 @@ async def send_to_second_backend(query: str, results: List[Dict[str, Any]], elap
                 timeout=5.0  # 타임아웃 5초로 설정
             )
             print(f"두 번째 백엔드 응답 코드: {response.status_code}")
+            print(f"두 번째 백엔드 응답 헤더: {response.headers}")
+            
+            # 응답 내용이 있는 경우 로깅
+            if response.text:
+                # 너무 길지 않게 처음 200자만 로깅
+                print(f"두 번째 백엔드 응답 내용: {response.text[:200]}...")
             
     except Exception as e:
         print(f"두 번째 백엔드 전송 오류 (무시됨): {str(e)}")
